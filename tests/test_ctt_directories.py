@@ -42,6 +42,8 @@ def test_towncrier_draft(ctt_dir, tmp_path):
             "towncrier",
             "build",
             "--draft",
+            "--version",
+            "0.2.0",
         ),
         cwd=ctt_dir,
         env=env,
@@ -49,7 +51,7 @@ def test_towncrier_draft(ctt_dir, tmp_path):
         check=True,
     )
 
-    assert "ctt-project 0.1.0" in res.stdout.decode()
+    assert "Example Dataset 0.2.0" in res.stdout.decode()
 
 
 @ctt_directories
