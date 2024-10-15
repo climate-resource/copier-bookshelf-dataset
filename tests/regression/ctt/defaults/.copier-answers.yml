@@ -1,0 +1,9 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: HEAD
+_src_path: ../../../../copier-bookshelf-dataset
+email: timslim@climate-resource.com
+name: Tim Slim
+dataset_name: example
+dataset_name_human: Example Dataset
+dataset_description: Test project made with copier-template-tester
+project_url: https://github.com/other-org/ctt-project

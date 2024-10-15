@@ -44,7 +44,7 @@ test:  ## run the tests
 
 .PHONY: changelog-draft
 changelog-draft:  ## compile a draft of the next changelog
-	poetry run towncrier build --draft
+	uvx towncrier build --draft
 
 .PHONY: virtual-environment
 virtual-environment:  ## update virtual environment, create a new one if it doesn't already exist

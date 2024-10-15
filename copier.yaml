@@ -26,7 +26,7 @@ dataset_name_human:
         header of your README so can include spaces, capital letters etc.
     placeholder: "Example Dataset"
 
-dataset_description_short:
+dataset_description:
     type: str
     help: What is the short description of the dataset?
     placeholder: >-
