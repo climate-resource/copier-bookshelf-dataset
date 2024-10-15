@@ -7,6 +7,7 @@ pre-commit hooks and CI will make sure you don't miss things completely.
 """
 
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -59,6 +60,10 @@ def test_run(ctt_dir):
     env = os.environ
     setup_venv(ctt_dir, env)
 
+    dist_dir = ctt_dir / "dist"
+
+    shutil.rmtree(dist_dir, ignore_errors=True)
+
     subprocess.run(
         (
             "make",
@@ -68,6 +73,5 @@ def test_run(ctt_dir):
         env=env,
         check=True,
     )
-    out_dir = ctt_dir / "out"
 
-    assert out_dir.exists()
+    assert dist_dir.exists()
