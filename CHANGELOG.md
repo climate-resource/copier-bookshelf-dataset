@@ -20,3 +20,13 @@ from the examples given in that link.
 -->
 
 <!-- towncrier release notes start -->
+
+## copier-bookshelf-dataset v0.2.0 (2024-10-15)
+
+### Bug Fixes
+
+- Fix the url in the towncrier configuration ([#3](https://github.com/climate-resource/copier-bookshelf-dataset/pull/3))
+
+### Improved Documentation
+
+- Fleshed out the README.md file with more information about the project. ([#1](https://github.com/climate-resource/copier-bookshelf-dataset/pull/1))
