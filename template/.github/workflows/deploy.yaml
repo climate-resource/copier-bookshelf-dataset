@@ -1,0 +1,28 @@
+name: Deploy
+
+on:
+  release:
+    types: [published]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy-bookshelf:
+    name: Deploy to the Bookshelf
+    environment: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Build datasets
+        run: |
+          make run
+      - name: Deploy to the Bookshelf
+        run: |
+            echo "Deploying to the Bookshelf"
+#          uv run bookshelf publish

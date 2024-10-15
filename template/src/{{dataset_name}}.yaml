@@ -1,0 +1,7 @@
+name: {{dataset_name}}
+edition: 1
+license: MIT
+metadata:
+  author: {{author}}
+  author_email: {{author_email}}
+versions:

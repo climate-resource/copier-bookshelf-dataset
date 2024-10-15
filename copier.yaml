@@ -1,0 +1,54 @@
+name:
+    type: str
+    help: What is your name? (We use this to write `pyproject.toml`)
+    placeholder: "John Bloggs"
+
+email:
+    type: str
+    help: What is your email? (We use this to write `pyproject.toml`)
+    placeholder: "john.bloggs@climate-resource.com"
+
+dataset_name:
+    type: str
+    help: >-
+        What is the human-readable name of your project? This will become the
+        header of your README so can include spaces, capital letters etc.
+    placeholder: "example"
+    validator: >-
+        {% if not (project_name_pip | regex_search('^[a-z][a-z0-9\-]+$')) %}
+        project_name_pip must be all lower case, contain no spaces and use hyphens for word separators
+        {% endif %}
+
+dataset_name_human:
+    type: str
+    help: >-
+        What is the human-readable name of your project? This will become the
+        header of your README so can include spaces, capital letters etc.
+    placeholder: "Example Dataset"
+
+dataset_description_short:
+    type: str
+    help: What is the short description of the dataset?
+    placeholder: >-
+        Project for doing a cool thing. Should be one or two sentences.
+
+project_url:
+    type: str
+    help: What is the URL for your project?
+    placeholder: "https://github.com/climate-resource/project-name"
+    validator: >-
+        {% if not (project_url | regex_search('^https:\/\/\S*(gitlab.com|github.com)\/\S*$')) %}
+        That doesn't look like a valid URL, please check
+        {% endif %}
+
+
+_envops:
+    trim_blocks: true
+    lstrip_blocks: true
+
+_tasks:
+    - '[ ! -d ".git" ] && git init'
+    # This should create a lockfile
+    - 'make virtual-environment && git add .'
+
+_subdirectory: template
