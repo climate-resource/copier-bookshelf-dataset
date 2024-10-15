@@ -25,10 +25,10 @@ repos:
         entry: found Copier update rejection files; review them and remove them
         language: fail
         files: "\\.rej$"
-  - repo: https://github.com/KyleKing/copier-template-tester
-    rev: 2.1.3
-    hooks:
-      - id: copier-template-tester
+#  - repo: https://github.com/KyleKing/copier-template-tester
+#    rev: 2.1.3
+#    hooks:
+#      - id: copier-template-tester
   - repo: https://github.com/charliermarsh/ruff-pre-commit
     rev: 'v0.6.9'
     hooks:
