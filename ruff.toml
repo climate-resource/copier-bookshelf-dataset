@@ -1,0 +1,47 @@
+src = [
+    "src",
+]
+target-version = "py311"
+line-length = 88
+
+[lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "D",
+    "PL",
+    "TRY",
+    "NPY",
+    "RUF",
+    "UP",
+    "S",
+]
+unfixable = [
+    "PD002",
+]
+ignore = [
+    "D100",
+    "D200",
+    "D400",
+    "UP007",
+]
+
+[lint.per-file-ignores]
+"test*.py" = [
+    "D",
+    "S101",
+    "PLR2004",
+]
+
+[lint.isort]
+known-first-party = [
+    "src",
+]
+
+[lint.pydocstyle]
+convention = "numpy"
+
+[format]
+docstring-code-format = true
