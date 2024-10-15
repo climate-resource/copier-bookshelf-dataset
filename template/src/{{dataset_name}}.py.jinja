@@ -28,7 +28,7 @@ from bookshelf_producer.notebook import load_nb_metadata
 logging.basicConfig(level="INFO")
 
 # %%
-metadata = load_nb_metadata("{{dataset_name}}")
+metadata = load_nb_metadata("{{ dataset_name }}")
 metadata.dict()
 
 # %% tags=["parameters"]

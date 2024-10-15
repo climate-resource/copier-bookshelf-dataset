@@ -11,11 +11,11 @@ email:
 dataset_name:
     type: str
     help: >-
-        What is the human-readable name of your project? This will become the
-        header of your README so can include spaces, capital letters etc.
+        What is the short name of the dataset?
+        This will be used to name the dataset and must be lowercase and contain no spaces.
     placeholder: "example"
     validator: >-
-        {% if not (project_name_pip | regex_search('^[a-z][a-z0-9\-]+$')) %}
+        {% if not (dataset_name | regex_search('^[a-z][a-z0-9\-]+$')) %}
         project_name_pip must be all lower case, contain no spaces and use hyphens for word separators
         {% endif %}
 

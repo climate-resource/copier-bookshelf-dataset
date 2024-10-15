@@ -1,9 +1,9 @@
 [tool.towncrier]
 # This runs towncrier in non-python mode, so we need to specify the project name and version at run-time
-name = "bookshelf-{{dataset_name}}"
+name = "bookshelf-{{ dataset_name }}"
 filename = "CHANGELOG.md"
 directory = "changelog/"
-title_format = "## {{dataset_name}} {version} ({project_date})"
+title_format = "## {{ dataset_name_human }} {version} ({project_date})"
 underlines = [
     "",
     "",
