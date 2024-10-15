@@ -15,6 +15,8 @@ endef
 export PRINT_HELP_PYSCRIPT
 
 export BOOKSHELF_NOTEBOOK_DIRECTORY = src
+# TODO: Remove once a release of bookshelf is made
+export UV_PRERELEASE = allow
 
 
 .PHONY: help
