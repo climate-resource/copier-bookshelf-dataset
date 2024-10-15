@@ -29,7 +29,7 @@ checks:  ## run all the linting checks of the codebase
 ruff-fixes:  ## fix the code using ruff
     # format before and after checking so that the formatted stuff is checked and
     # the fixed stuff is formatted
-	uvx ruff@0.6.9 format src tests
+	uvx ruff@0.6.9 format
 	uvx ruff@0.6.9 check --fix
 	uvx ruff@0.6.9 format
 
@@ -44,7 +44,7 @@ test:  ## run the tests
 
 .PHONY: changelog-draft
 changelog-draft:  ## compile a draft of the next changelog
-	uvx towncrier build --draft
+	uvx towncrier build --draft --version 0.1.0
 
 .PHONY: virtual-environment
 virtual-environment:  ## update virtual environment, create a new one if it doesn't already exist
