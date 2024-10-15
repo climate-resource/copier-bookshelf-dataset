@@ -5,6 +5,7 @@ In theory, these tests should only be run after we have run ctt to ensure the
 latest changes are picked up. In practice, even if you forget to run ctt the
 pre-commit hooks and CI will make sure you don't miss things completely.
 """
+
 import os
 import subprocess
 from pathlib import Path
@@ -16,7 +17,6 @@ CTT_DIR = Path(__file__).parent / "regression" / "ctt"
 ctt_directories = pytest.mark.parametrize(
     "ctt_dir", [pytest.param(CTT_DIR.absolute() / d, id=d) for d in os.listdir(CTT_DIR)]
 )
-
 
 
 def setup_venv(ctt_dir, env):
