@@ -9,7 +9,7 @@ underlines = [
     "",
     "",
 ]
-issue_format = "[#{issue}](/pull/{issue})"
+issue_format = "[#{issue}](https://github.com/climate-resource/ctt-project/pull/{issue})"
 type = [
     { directory = "breaking", name = "Breaking Changes", showcontent = true },
     { directory = "deprecation", name = "Deprecations", showcontent = true },
