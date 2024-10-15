@@ -37,8 +37,8 @@ project_url:
     help: What is the URL for your project?
     placeholder: "https://github.com/climate-resource/project-name"
     validator: >-
-        {% if not (project_url | regex_search('^https:\/\/\S*(gitlab.com|github.com)\/\S*$')) %}
-        That doesn't look like a valid URL, please check
+        {% if not (project_url | regex_search('^https:\/\/\S*(github.com)\/\S*$')) %}
+        That doesn't look like a valid URL, please check. Only GitHub URLs are supported.
         {% endif %}
 
 

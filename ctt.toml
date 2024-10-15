@@ -1,45 +1,9 @@
 [defaults]
 name = "Tim Slim"
 email = "timslim@climate-resource.com"
-project_name_human = "CTT Project"
-project_name_python = "ctt_project"
-project_name_pip = "ctt-project"
-project_description_short = "Test project made with copier-template-tester"
-plot_dependencies = false
-notebook_dependencies = false
-initial_setup = true
-project_url = "https://gitlab.com/climate-resource/ctt-project"
-pandas_doctests = false
-track_lock_file = true
-
-[output."tests/regression/ctt/gitlab-defaults"]
-
-[output."tests/regression/ctt/gitlab-defaults-no-initial-setup"]
-initial_setup = false
-
-[output."tests/regression/ctt/github-defaults"]
-project_url = "https://github.com/other-org/ctt-project"
-
-[output."tests/regression/ctt/github-defaults-no-initial-setup"]
+dataset_name = "example"
+dataset_name_human = "Example Dataset"
+dataset_description = "Test project made with copier-template-tester"
 project_url = "https://github.com/climate-resource/ctt-project"
-initial_setup = false
 
-[output."tests/regression/ctt/plot-dependencies"]
-plot_dependencies = true
-
-[output."tests/regression/ctt/notebook-dependencies"]
-notebook_dependencies = true
-
-[output."tests/regression/ctt/plot-notebook-dependencies"]
-notebook_dependencies = true
-plot_dependencies = true
-
-[output."tests/regression/ctt/pandas-doctests"]
-pandas_doctests = true
-
-[output."tests/regression/ctt/gitlab-no-lock-file"]
-track_lock_file = false
-
-[output."tests/regression/ctt/github-no-lock-file"]
-project_url = "https://github.com/climate-resource/ctt-project"
-track_lock_file = false
+[output."tests/regression/ctt/defaults"]

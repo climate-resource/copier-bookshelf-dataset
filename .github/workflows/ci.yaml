@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+
+jobs:
+  linting:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    env:
+      PRE_COMMIT_HOME: /tmp/.cache/pre-commit
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Cache pre-commit
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.cache/pre-commit
+          key: ${{ runner.os }}-pre-commit
+      - name: mypy
+        run: |
+          # Runs ctt as well
+          uvx pre-commit run --all-files
+
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ "ubuntu-latest" ]
+        python-version:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+    runs-on: "${{ matrix.os }}"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+      - name: Check build
+        run: |
+          make run
+      - name: Run tests
+        run: |
+          uv run pytest tests -r a -v

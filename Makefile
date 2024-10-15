@@ -35,7 +35,7 @@ ruff-fixes:  ## fix the code using ruff
 
 .PHONY: ctt
 ctt:  ## run ctt (copier-template-tester) to generate output from running this template with the config defined in `ctt.toml`
-	uvx ctt
+	uv run ctt
 
 .PHONY: test
 test:  ## run the tests
