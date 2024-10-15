@@ -21,6 +21,11 @@ from the examples given in that link.
 
 <!-- towncrier release notes start -->
 
+## copier-bookshelf-dataset v0.2.1 (2024-10-15)
+
+No significant changes.
+
+
 ## copier-bookshelf-dataset v0.2.0 (2024-10-15)
 
 ### Bug Fixes
