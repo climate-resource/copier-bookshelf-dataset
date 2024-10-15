@@ -22,11 +22,6 @@ jobs:
         run: |
           PROJECT_VERSION=$(uv run python scripts/get-version.py)
           echo "PROJECT_VERSION=$PROJECT_VERSION" >> $GITHUB_ENV
-      - name: Build datasets
-        run: |
-          make run
-          zip -r data_v$PROJECT_VERSION.zip dist
-          tar -czf data_v$PROJECT_VERSION.tar.gz dist
       - name: Generate Release Notes
         run: |
           echo "" >> ".github/release_template.md"
