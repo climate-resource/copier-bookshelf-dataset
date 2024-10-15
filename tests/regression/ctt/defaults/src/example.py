@@ -28,7 +28,7 @@ from scmdata.testing import get_single_ts
 logging.basicConfig(level="INFO")
 
 # %%
-metadata = load_nb_metadata("{{ dataset_name }}")
+metadata = load_nb_metadata("example")
 metadata.dict()
 
 # %% tags=["parameters"]

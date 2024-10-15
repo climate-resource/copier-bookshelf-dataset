@@ -1,0 +1,7 @@
+name: example
+edition: 1
+license: MIT
+metadata:
+  author: Tim Slim
+  author_email: timslim@climate-resource.com
+versions:

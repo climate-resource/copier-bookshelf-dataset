@@ -1,9 +1,9 @@
-name:
+author:
     type: str
     help: What is your name? (We use this to write `pyproject.toml`)
     placeholder: "John Bloggs"
 
-email:
+author_email:
     type: str
     help: What is your email? (We use this to write `pyproject.toml`)
     placeholder: "john.bloggs@climate-resource.com"

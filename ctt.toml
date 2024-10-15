@@ -1,6 +1,6 @@
 [defaults]
-name = "Tim Slim"
-email = "timslim@climate-resource.com"
+author = "Tim Slim"
+author_email = "timslim@climate-resource.com"
 dataset_name = "example"
 dataset_name_human = "Example Dataset"
 dataset_description = "Test project made with copier-template-tester"

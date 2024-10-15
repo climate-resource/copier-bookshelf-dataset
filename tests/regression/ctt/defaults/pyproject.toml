@@ -1,0 +1,16 @@
+[project]
+name = "bookshelf-example"
+version = "0.1.0"
+description = "Test project made with copier-template-tester"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "bookshelf-producer>=0.3.1b3",
+    "scmdata>=0.16.1",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "mypy>=1.11.2",
+    "toml>=0.10.2",
+]

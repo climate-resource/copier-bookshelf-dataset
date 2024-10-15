@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  draft-release:
+    name: Create draft release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Add version to environment
+        run: |
+          PROJECT_VERSION=$(uv run python scripts/get-version.py)
+          echo "PROJECT_VERSION=$PROJECT_VERSION" >> $GITHUB_ENV
+      - name: Build datasets
+        run: |
+          make run
+          zip -r data_v$PROJECT_VERSION.zip dist
+          tar -czf data_v$PROJECT_VERSION.tar.gz dist
+      - name: Generate Release Notes
+        run: |
+          echo "" >> ".github/release_template.md"
+          echo "## Changelog" >> ".github/release_template.md"
+          echo "" >> ".github/release_template.md"
+          uv run python scripts/changelog-to-release-template.py >> ".github/release_template.md"
+          echo "" >> ".github/release_template.md"
+          echo "## Changes" >> ".github/release_template.md"
+          echo "" >> ".github/release_template.md"
+          git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty='format:* %h %s' --no-merges >> ".github/release_template.md"
+      - name: Archive built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: |
+            dist
+      - name: Create Release Draft
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: ".github/release_template.md"
+          token: "${{ secrets.PERSONAL_ACCESS_TOKEN }}"
+          draft: true
+          files: |
+            data_*
