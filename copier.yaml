@@ -47,7 +47,7 @@ _envops:
     lstrip_blocks: true
 
 _tasks:
-    - '[ ! -d ".git" ] && git init'
+    - '[ ! -d ".git" ] && git init || exit 0'
     # This should create a lockfile
     - 'make virtual-environment && git add .'
 
