@@ -57,7 +57,7 @@ wheels = [
 
 [[package]]
 name = "copier-bookshelf-dataset"
-version = "0.2.4a1"
+version = "0.2.4"
 source = { virtual = "." }
 
 [package.dev-dependencies]
