@@ -21,6 +21,13 @@ from the examples given in that link.
 
 <!-- towncrier release notes start -->
 
+## copier-bookshelf-dataset v0.2.3 (2024-10-16)
+
+### Bug Fixes
+
+- Include a pre-release dependency on bookshelf ([#7](https://github.com/climate-resource/copier-bookshelf-dataset/pull/7))
+
+
 ## copier-bookshelf-dataset v0.2.2 (2024-10-16)
 
 ### Improvements
