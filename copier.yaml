@@ -35,7 +35,8 @@ dataset_description:
 project_url:
     type: str
     help: What is the URL for your project?
-    placeholder: "https://github.com/climate-resource/project-name"
+    default: |-
+        https://github.com/climate-resource/bookshelf-{{ dataset_name }}
     validator: >-
         {% if not (project_url | regex_search('^https:\/\/\S*(github.com)\/\S*$')) %}
         That doesn't look like a valid URL, please check. Only GitHub URLs are supported.
