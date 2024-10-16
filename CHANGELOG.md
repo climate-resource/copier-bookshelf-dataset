@@ -49,3 +49,10 @@ No significant changes.
 ### Improved Documentation
 
 - Fleshed out the README.md file with more information about the project. ([#1](https://github.com/climate-resource/copier-bookshelf-dataset/pull/1))
+
+## copier-bookshelf-dataset v0.1.0 (2024-10-14)
+
+### Features
+
+- Initial development of the template based on github.com/climate-resource/bookshelf-rcmip-emissions ([#1](https://github.com/climate-resource/copier-bookshelf-dataset/pull/1))
+- Add configuration to generate a changelog on release ([#1](https://github.com/climate-resource/copier-bookshelf-dataset/pull/1))
