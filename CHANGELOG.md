@@ -21,6 +21,13 @@ from the examples given in that link.
 
 <!-- towncrier release notes start -->
 
+## copier-bookshelf-dataset v0.2.2 (2024-10-16)
+
+### Improvements
+
+- Provide a saner default for the project url ([#5](https://github.com/climate-resource/copier-bookshelf-dataset/pull/5))
+
+
 ## copier-bookshelf-dataset v0.2.1 (2024-10-15)
 
 No significant changes.
