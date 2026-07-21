@@ -17,7 +17,7 @@ jobs:
           # GitHub added these reusable workflow identity properties before
           # actionlint's schema learned them.
           flags: >-
-            -ignore 'property "workflow_(repository|sha)" is not defined'
+            -ignore property.*workflow_(repository|sha).*not.defined
 
   linting:
     if: ${{ !github.event.pull_request.draft }}
