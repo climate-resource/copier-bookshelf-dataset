@@ -5,9 +5,12 @@
 
 # %% tags=["parameters"]
 version = "v0.1.0"
+input_sha256 = "sha256:9d4044e80da87a78fcd9153422b1f50ea527081f9f1a70a8d9e0248c77ff4e71"
 
 # %%
 import asyncio
+import hashlib
+from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
 import bookshelf_client as bookshelf
@@ -25,16 +28,31 @@ output_tracking_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/data/{version}"
 # %% [markdown]
 # # Fetch
 #
-# Replace this small example with a hash verified upstream input.
+# Replace this small cached example with a hash verified upstream input.
 
 # %%
-raw_data = pd.DataFrame(
-    {
-        "region": ["World", "World"],
-        "year": [2020, 2021],
-        "value": [1.0, 2.0],
-    }
-)
+input_content = b"region,year,value\n" b"World,2020,1.0\n" b"World,2021,2.0\n"
+
+
+class InputHashMismatchError(ValueError):
+    """Raised when cached input bytes do not match their declared hash."""
+
+
+def fetch_input(expected_sha256: str) -> Path:
+    """Cache the example input and verify its declared content hash."""
+    cache = Path(".cache") / "example.csv"
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    if not cache.exists():
+        cache.write_bytes(input_content)
+
+    actual = f"sha256:{hashlib.sha256(cache.read_bytes()).hexdigest()}"
+    if actual != expected_sha256:
+        raise InputHashMismatchError
+    return cache
+
+
+raw_path = fetch_input(input_sha256)
+raw_data = pd.read_csv(raw_path)
 
 # %% [markdown]
 # # Process
