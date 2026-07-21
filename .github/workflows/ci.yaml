@@ -8,6 +8,17 @@ on:
 
 
 jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2
+        with:
+          # GitHub added these reusable workflow identity properties before
+          # actionlint's schema learned them.
+          flags: >-
+            -ignore 'property "workflow_(repository|sha)" is not defined'
+
   linting:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest

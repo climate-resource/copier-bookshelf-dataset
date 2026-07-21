@@ -1,0 +1,17 @@
+name: Feedstock publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    uses: climate-resource/copier-bookshelf-dataset/.github/workflows/feedstock-publish.yaml@{{ _copier_conf.vcs_ref or _copier_answers._commit }}
+    with:
+      api-base-url: ${{ '{{' }} vars.BOOKSHELF_API_BASE_URL || 'https://api.climateresource.com.au/bookshelf' }}
+      token-url: ${{ '{{' }} vars.BOOKSHELF_TOKEN_URL }}
+    secrets: inherit

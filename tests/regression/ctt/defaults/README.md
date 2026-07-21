@@ -23,5 +23,11 @@ This creates a validated local bundle in `bundle/` without API credentials.
 The bundle can be replayed to the Bookshelf API using `make publish`.
 The publish workflow normally performs that step on a release.
 
+Publishing uses the repository environment named `deploy`.
+Configure `BOOKSHELF_CLIENT_ID` and `BOOKSHELF_CLIENT_SECRET` as environment secrets on that environment.
+Set the public `BOOKSHELF_TOKEN_URL` repository variable to the WorkOS AuthKit token endpoint.
+The generated publish caller uses `secrets: inherit`.
+The reusable publish job carries `environment: deploy`, so those environment secrets are resolved when that job starts.
+
 Identical inputs must create identical bytes and stable lineage identifiers.
 Change the hardcoded `version` in `build.py` when publishing a new data version.

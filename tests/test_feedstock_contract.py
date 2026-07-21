@@ -57,15 +57,26 @@ def test_generated_feedstock_calls_reusable_workflows() -> None:
     assert "push:" in ci
     assert "schedule:" in ci
     assert (
-        "climate-resource/bookshelf-actions/.github/workflows/feedstock-ci.yaml@v1"
-        in ci
+        "climate-resource/copier-bookshelf-dataset/.github/workflows/"
+        "feedstock-ci.yaml@HEAD" in ci
     )
     assert "release:" in publish
     assert "workflow_dispatch:" in publish
     assert (
-        "climate-resource/bookshelf-actions/.github/workflows/feedstock-publish.yaml@v1"
-        in publish
+        "climate-resource/copier-bookshelf-dataset/.github/workflows/"
+        "feedstock-publish.yaml@HEAD" in publish
     )
     assert "secrets: inherit" in publish
     assert "BOOKSHELF_CLIENT_ID:" not in publish
     assert "BOOKSHELF_CLIENT_SECRET:" not in publish
+
+
+def test_caller_templates_derive_the_reusable_workflow_ref() -> None:
+    """A caller uses Copier's selected ref, with its resolved commit as fallback."""
+    template_workflows = (
+        Path(__file__).parents[1] / "template" / ".github" / "workflows"
+    )
+
+    for name in ("feedstock-ci.yaml.jinja", "feedstock-publish.yaml.jinja"):
+        caller = (template_workflows / name).read_text()
+        assert "_copier_conf.vcs_ref or _copier_answers._commit" in caller

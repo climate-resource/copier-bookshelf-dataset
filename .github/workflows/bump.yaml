@@ -43,29 +43,29 @@ jobs:
           git config --global user.name "$GITHUB_ACTOR"
           git config --global user.email "$CI_COMMIT_EMAIL"
 
-          BASE_VERSION=$(uv run python scripts/get-version.py)
-          echo "Bumping from version $BASE_VERSION"
+          BASE_VERSION="$(uv run python scripts/get-version.py)"
+          echo "Bumping from version ${BASE_VERSION}"
 
           # Bump
-          uv run pdm bump ${{ github.event.inputs.bump_rule }}
+          uv run pdm bump "${{ github.event.inputs.bump_rule }}"
 
-          NEW_VERSION=$(uv run python scripts/get-version.py)
-          echo "Bumping to version $NEW_VERSION"
+          NEW_VERSION="$(uv run python scripts/get-version.py)"
+          echo "Bumping to version ${NEW_VERSION}"
 
           # Build CHANGELOG
-          uvx towncrier build --yes --version v$NEW_VERSION
+          uvx towncrier build --yes --version "v${NEW_VERSION}"
 
           # Commit, tag and push
-          git commit -a -m "bump: version $BASE_VERSION -> $NEW_VERSION"
-          git tag v$NEW_VERSION
+          git commit -a -m "bump: version ${BASE_VERSION} -> ${NEW_VERSION}"
+          git tag "v${NEW_VERSION}"
           git push && git push --tags
 
           # Exit early if the version is a pre-release
-          [[ "$NEW_VERSION" =~ ([abrc]+) ]] && exit 0
+          [[ "${NEW_VERSION}" =~ ([abrc]+) ]] && exit 0
 
           # Bump to alpha (so that future commits do not have the same
           # version as the tagged commit)
-          BASE_VERSION=$(uv run python scripts/get-version.py)
+          BASE_VERSION="$(uv run python scripts/get-version.py)"
 
           # Bump to pre-release of next version
           uv run pdm bump pre-release --pre alpha

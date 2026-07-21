@@ -1,0 +1,41 @@
+name: Feedstock CI
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version used to run the feedstock
+        required: false
+        type: string
+        default: "3.11"
+
+permissions:
+  contents: read
+
+jobs:
+  record:
+    name: Record and validate bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out feedstock
+        uses: actions/checkout@v4
+
+      - name: Check out matching feedstock action
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .copier-bookshelf-dataset
+          persist-credentials: false
+
+      - name: Record and validate bundle
+        uses: ./.copier-bookshelf-dataset/actions/record-bundle
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Upload validated bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: bookshelf-bundle
+          path: bundle
+          if-no-files-found: error

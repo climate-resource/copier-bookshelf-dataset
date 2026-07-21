@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   publish:
-    uses: climate-resource/bookshelf-actions/.github/workflows/feedstock-publish.yaml@v1
+    uses: climate-resource/copier-bookshelf-dataset/.github/workflows/feedstock-publish.yaml@HEAD
     with:
       api-base-url: ${{ vars.BOOKSHELF_API_BASE_URL || 'https://api.climateresource.com.au/bookshelf' }}
       token-url: ${{ vars.BOOKSHELF_TOKEN_URL }}

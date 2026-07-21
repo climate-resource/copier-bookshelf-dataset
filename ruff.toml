@@ -29,6 +29,9 @@ ignore = [
 ]
 
 [lint.per-file-ignores]
+"actions/record-bundle/*.py" = [
+    "TRY003",
+]
 "test*.py" = [
     "D",
     "S101",
