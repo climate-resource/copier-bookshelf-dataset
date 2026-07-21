@@ -35,6 +35,19 @@ It will ask you lots of questions about the dataset you want to create.
 Once you have created your repository, there are then a number of further
 steps which have to be done to get everything running as intended.
 
+## Feedstock automation
+
+This public repository hosts the reusable feedstock workflows in `.github/workflows/feedstock-ci.yaml` and `.github/workflows/feedstock-publish.yaml`.
+Their composite action lives in `actions/record-bundle`.
+Generated callers pin the reusable workflows to the exact Copier ref that generated the feedstock.
+The reusable workflow then checks out its composite action from the workflow's own commit, so the caller, workflow, and action cannot drift apart.
+
+Publishing uses the feedstock repository environment named `deploy`.
+Configure `BOOKSHELF_CLIENT_ID` and `BOOKSHELF_CLIENT_SECRET` as environment secrets on that environment.
+Set the public `BOOKSHELF_TOKEN_URL` repository variable to the WorkOS AuthKit token endpoint.
+Generated publish callers use `secrets: inherit`.
+The reusable publish job carries `environment: deploy`, so those environment secrets are resolved when that job starts.
+
 ## Required secrets
 
 Create a [personal access token](https://docs.github.com/en/enterprise-server@3.4/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#about-personal-access-tokens)

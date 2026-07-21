@@ -1,0 +1,95 @@
+name: Feedstock publish
+
+on:
+  workflow_call:
+    inputs:
+      api-base-url:
+        description: Bookshelf API base URL
+        required: false
+        type: string
+        default: https://api.climateresource.com.au/bookshelf
+      token-url:
+        description: WorkOS AuthKit client credentials token URL
+        required: true
+        type: string
+      python-version:
+        description: Python version used to run the feedstock
+        required: false
+        type: string
+        default: "3.12"
+    secrets:
+      BOOKSHELF_CLIENT_ID:
+        description: WorkOS M2M client ID
+        required: true
+      BOOKSHELF_CLIENT_SECRET:
+        description: WorkOS M2M client secret
+        required: true
+    outputs:
+      outcome:
+        description: Publish outcome
+        value: ${{ jobs.publish.outputs.outcome }}
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Record and publish bundle
+    runs-on: ubuntu-latest
+    environment: deploy
+    outputs:
+      outcome: ${{ steps.publish.outputs.outcome }}
+    steps:
+      - name: Check out feedstock
+        uses: actions/checkout@v4
+
+      - name: Check out matching feedstock action
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .copier-bookshelf-dataset
+          persist-credentials: false
+
+      - name: Record and validate bundle
+        uses: ./.copier-bookshelf-dataset/actions/record-bundle
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Exchange M2M credentials
+        id: token
+        shell: bash
+        env:
+          CLIENT_ID: ${{ secrets.BOOKSHELF_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.BOOKSHELF_CLIENT_SECRET }}
+          TOKEN_URL: ${{ inputs.token-url }}
+        run: |
+          set -euo pipefail
+          response="$(curl --silent --show-error --fail-with-body \
+            --request POST "${TOKEN_URL}" \
+            --header "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "grant_type=client_credentials" \
+            --data-urlencode "client_id=${CLIENT_ID}" \
+            --data-urlencode "client_secret=${CLIENT_SECRET}")"
+          token="$(jq -er '.access_token' <<<"${response}")"
+          echo "::add-mask::${token}"
+          echo "token=${token}" >> "${GITHUB_OUTPUT}"
+
+      - name: Replay bundle
+        id: publish
+        shell: bash
+        env:
+          API_BASE_URL: ${{ inputs.api-base-url }}
+          BOOKSHELF_TOKEN: ${{ steps.token.outputs.token }}
+        run: |
+          set -euo pipefail
+          result="$(uv run python "${BOOKSHELF_ACTION_PATH}/publish_bundle.py" bundle \
+            --base-url "${API_BASE_URL}" \
+            --token "${BOOKSHELF_TOKEN}")"
+          outcome="$(jq -er '.outcome' <<<"${result}")"
+          echo "outcome=${outcome}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "## Publish outcome"
+            echo
+            echo "\`${result}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"

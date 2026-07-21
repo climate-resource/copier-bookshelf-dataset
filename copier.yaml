@@ -16,7 +16,7 @@ dataset_name:
     placeholder: "example"
     validator: >-
         {% if not (dataset_name | regex_search('^[a-z][a-z0-9\-]+$')) %}
-        project_name_pip must be all lower case, contain no spaces and use hyphens for word separators
+        dataset_name must be all lower case, contain no spaces and use hyphens for word separators
         {% endif %}
 
 dataset_name_human:
@@ -49,7 +49,6 @@ _envops:
 
 _tasks:
     - '[ ! -d ".git" ] && git init || exit 0'
-    # This should create a lockfile
-    - 'make virtual-environment && git add .'
+    - 'git add .'
 
 _subdirectory: template

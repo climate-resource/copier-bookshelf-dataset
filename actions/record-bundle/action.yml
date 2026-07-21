@@ -1,0 +1,80 @@
+name: "Record Bookshelf bundle"
+description: "Record and validate a feedstock bundle without API credentials"
+
+inputs:
+  python-version:
+    description: "Python version used to run the feedstock"
+    required: false
+    default: "3.12"
+  build-file:
+    description: "Standalone Jupytext build file"
+    required: false
+    default: "build.py"
+  recipe:
+    description: "Slim Bookshelf recipe"
+    required: false
+    default: "bookshelf.yaml"
+  bundle:
+    description: "Output bundle directory"
+    required: false
+    default: "bundle"
+  cache-path:
+    description: "Raw input cache directory"
+    required: false
+    default: ".cache"
+
+outputs:
+  bundle-path:
+    description: "Recorded bundle directory"
+    value: ${{ inputs.bundle }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up uv
+      uses: climate-resource/github-actions/setup-uv@v1
+      with:
+        python-version: ${{ inputs.python-version }}
+        enable-cache: "true"
+
+    - name: Derive raw input cache key
+      id: raw-cache-key
+      shell: bash
+      env:
+        BUILD_FILE: ${{ inputs.build-file }}
+      run: python3 "${GITHUB_ACTION_PATH}/cache_key.py" "${BUILD_FILE}"
+
+    - name: Restore raw inputs
+      if: steps.raw-cache-key.outputs.found == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.cache-path }}
+        key: bookshelf-raw-${{ runner.os }}-${{ steps.raw-cache-key.outputs.key }}
+
+    - name: Install locked feedstock environment
+      shell: bash
+      run: uv sync --locked
+
+    - name: Record bundle
+      shell: bash
+      env:
+        BUILD_FILE: ${{ inputs.build-file }}
+        RECIPE: ${{ inputs.recipe }}
+        BUNDLE: ${{ inputs.bundle }}
+      run: >-
+        uv run bookshelf record "${BUILD_FILE}"
+        --recipe "${RECIPE}"
+        --bundle "${BUNDLE}"
+
+    - name: Validate bundle
+      shell: bash
+      env:
+        BUNDLE: ${{ inputs.bundle }}
+      run: uv run python "${GITHUB_ACTION_PATH}/validate_bundle.py" "${BUNDLE}"
+
+    - name: Export action helper path
+      shell: bash
+      # GITHUB_ACTION_PATH exists only while the composite action is running.
+      # Exporting BOOKSHELF_ACTION_PATH through GITHUB_ENV is the contract that lets
+      # the reusable publish workflow invoke publish_bundle.py in a later step.
+      run: echo "BOOKSHELF_ACTION_PATH=${GITHUB_ACTION_PATH}" >> "${GITHUB_ENV}"
