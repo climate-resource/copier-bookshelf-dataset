@@ -81,15 +81,14 @@ def test_actionlint_is_part_of_the_existing_ci_and_immutably_pinned() -> None:
     )
 
 
-def test_environment_secret_model_is_documented() -> None:
-    """Operators know how deploy environment secrets reach the reusable job."""
+def test_environment_secret_model_is_documented_without_a_handoff_file() -> None:
+    """The README owns deploy environment guidance without a handoff document."""
     readme = (ROOT / "README.md").read_text()
-    handoff = (ROOT / "HANDOFF.md").read_text()
 
-    for document in (readme, handoff):
-        assert "secrets: inherit" in document
-        assert "deploy" in document
-        assert "environment secrets" in document
+    assert "secrets: inherit" in readme
+    assert "deploy" in readme
+    assert "environment secrets" in readme
+    assert not (ROOT / "HANDOFF.md").exists()
 
 
 def test_action_scripts_use_native_python_311_annotations() -> None:

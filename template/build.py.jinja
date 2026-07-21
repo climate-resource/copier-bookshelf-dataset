@@ -8,21 +8,18 @@ version = "v0.1.0"
 input_sha256 = "sha256:9d4044e80da87a78fcd9153422b1f50ea527081f9f1a70a8d9e0248c77ff4e71"
 
 # %%
-import asyncio
 import hashlib
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
-import bookshelf_client as bookshelf
 import pandas as pd
-
-# %%
-recorder, book = bookshelf.setup(version=version, visibility="public")
+from bookshelf import Bookshelf
 
 # Stable identifiers keep identical builds byte deterministic.
 resource_namespace = "{{ project_url }}"
 raw_tracking_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/raw/{version}")
-activity_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/process/{version}")
+raw_activity_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/fetch/{version}")
+process_activity_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/process/{version}")
 output_tracking_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/data/{version}")
 
 # %% [markdown]
@@ -62,21 +59,25 @@ processed_data = raw_data.assign(value=raw_data["value"] * 2)
 
 
 # %%
-async def main() -> None:
-    """Register inputs and outputs with explicit lineage, then publish."""
-    raw = await recorder.register(
-        raw_data,
-        type="tabular",
-        logical_key=f"{{ dataset_name }}/raw-{version}",
-        tracking_id=raw_tracking_id,
-    )
-
-    async with recorder.activity(
-        kind="process",
-        parameters={"version": version},
-        activity_id=activity_id,
+with Bookshelf() as client:
+    with client.activity(
+        kind="fetch",
+        config={"version": version},
+        activity_id=raw_activity_id,
     ) as activity:
-        data = await activity.register(
+        raw = activity.register(
+            raw_data,
+            type="tabular",
+            logical_key=f"{{ dataset_name }}/raw-{version}",
+            tracking_id=raw_tracking_id,
+        )
+
+    with client.activity(
+        kind="process",
+        config={"version": version},
+        activity_id=process_activity_id,
+    ) as activity:
+        data = activity.register(
             processed_data,
             type="timeseries",
             logical_key=f"{{ dataset_name }}/data-{version}",
@@ -84,8 +85,11 @@ async def main() -> None:
             tracking_id=output_tracking_id,
         )
 
-    book.attach(data, "data")
-    book.publish()
-
-
-asyncio.run(main())
+    draft = client.draft_book(
+        "{{ dataset_name }}",
+        version=version,
+        license="MIT",
+        visibility="public",
+    )
+    draft.attach(data, name_in_book="data")
+    draft.publish()

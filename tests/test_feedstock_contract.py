@@ -20,7 +20,17 @@ def test_generated_feedstock_uses_record_and_replay_shape() -> None:
     assert 'version = "v0.1.0"' in build
     assert 'input_sha256 = "sha256:' in build
     assert 'Path(".cache")' in build
-    assert "recorder, book = bookshelf.setup(version=version" in build
+    assert "from bookshelf import Bookshelf" in build
+    assert "with Bookshelf() as client:" in build
+    assert "with client.activity(" in build
+    assert "raw = activity.register(" in build
+    assert "data = activity.register(" in build
+    assert "draft = client.draft_book(" in build
+    assert 'draft.attach(data, name_in_book="data")' in build
+    assert "draft.publish()" in build
+    assert "asyncio" not in build
+    assert "async def" not in build
+    assert "await " not in build
     assert "used=[raw.tracking_id]" in build
     assert '"bookshelf-client[cli,publish,dataframes]' in pyproject
     assert '"build.py" = [' in ruff
