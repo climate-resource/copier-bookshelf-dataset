@@ -50,20 +50,22 @@ The reusable publish job carries `environment: deploy`, so those environment sec
 
 ## Releasing
 
-Version bumps and releases run through the shared
-[climate-resource/github-actions](https://github.com/climate-resource/github-actions) workflow.
+Version bumps and releases run through `.github/workflows/bump.yaml`.
 Dispatch the "Bump version" workflow and pick a bump rule.
 The workflow bumps the version with `uv version`, builds the CHANGELOG with towncrier,
 tags, and drafts the GitHub release in a single run.
 
+The steps are inlined rather than delegated to a shared reusable workflow.
+GitHub does not let a public repository resolve actions or reusable workflows
+that live in a private repository, and this repository is public,
+so the steps live directly in the workflow instead.
+
 For a generated feedstock, publishing that draft release by hand is what triggers the feedstock publish workflow.
-A release drafted by CI and published by CI would not fire it,
+A release published by CI would not fire it,
 because releases created with `GITHUB_TOKEN` do not trigger other workflows.
 
 No `PERSONAL_ACCESS_TOKEN` is needed.
 The bump workflow uses the built-in `GITHUB_TOKEN`.
-A PAT is only required if `main` gains branch protection that blocks pushes from `github-actions[bot]`,
-in which case pass it to the reusable workflow as `secrets: token`.
 
 ## Updating repositories
 
