@@ -48,21 +48,22 @@ Set the public `BOOKSHELF_TOKEN_URL` repository variable to the WorkOS AuthKit t
 Generated publish callers use `secrets: inherit`.
 The reusable publish job carries `environment: deploy`, so those environment secrets are resolved when that job starts.
 
-## Required secrets
+## Releasing
 
-Create a [personal access token](https://docs.github.com/en/enterprise-server@3.4/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#about-personal-access-tokens)
-that can be used to write to the repository as part of GitHub actions.
-It is best to use the fine-grained tokens
-and only give the token access to this repository.
-The token will need "Contents" permissions, specifically read and write access for "Contents".
+Version bumps and releases run through the shared
+[climate-resource/github-actions](https://github.com/climate-resource/github-actions) workflow.
+Dispatch the "Bump version" workflow and pick a bump rule.
+The workflow bumps the version with `uv version`, builds the CHANGELOG with towncrier,
+tags, and drafts the GitHub release in a single run.
 
-If you can't create a token,
-your organisation may need to enable personal access token access.
-Please ask one of the lead developers.
+For a generated feedstock, publishing that draft release by hand is what triggers the feedstock publish workflow.
+A release drafted by CI and published by CI would not fire it,
+because releases created with `GITHUB_TOKEN` do not trigger other workflows.
 
-Once you have your token, add it to a repository secret
-(Settings ->Secrets and variables -> Actions -> New repository secret)
-called `PERSONAL_ACCESS_TOKEN`.
+No `PERSONAL_ACCESS_TOKEN` is needed.
+The bump workflow uses the built-in `GITHUB_TOKEN`.
+A PAT is only required if `main` gains branch protection that blocks pushes from `github-actions[bot]`,
+in which case pass it to the reusable workflow as `secrets: token`.
 
 ## Updating repositories
 

@@ -13,7 +13,7 @@ def test_record_bundle_composite_owns_the_offline_build_path() -> None:
 
     assert 'using: "composite"' in action
     assert "climate-resource/github-actions/setup-uv@v1" in action
-    assert "actions/cache@v4" in action
+    assert "actions/cache@v6" in action
     assert "uv sync --locked" in action
     assert "bookshelf record" in action
     assert "validate_bundle.py" in action
@@ -30,7 +30,7 @@ def test_ci_reusable_workflow_is_credential_free_and_call_only() -> None:
     assert "pull_request:" not in workflow
     assert "push:" not in workflow
     assert "workflow_dispatch:" not in workflow
-    assert "actions/checkout@v4" in workflow
+    assert "actions/checkout@v6" in workflow
     assert "./.copier-bookshelf-dataset/actions/record-bundle" in workflow
     assert "secrets:" not in workflow
     assert "BOOKSHELF_TOKEN" not in workflow

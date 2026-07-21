@@ -1,7 +1,7 @@
 src = [
     "src",
 ]
-target-version = "py311"
+target-version = "py312"
 line-length = 88
 
 [lint]
@@ -36,6 +36,9 @@ ignore = [
     "D",
     "S101",
     "PLR2004",
+    # The tests shell out to make and uvx, which are resolved from PATH.
+    "S603",
+    "S607",
 ]
 
 [lint.isort]

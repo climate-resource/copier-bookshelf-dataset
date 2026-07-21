@@ -22,16 +22,16 @@ help:  ## print short description of each target
 
 .PHONY: checks
 checks:  ## run all the linting checks of the codebase
-	@echo "=== pre-commit ==="; poetry run pre-commit run --all-files || echo "--- pre-commit failed ---" >&2; \
+	@echo "=== pre-commit ==="; uvx pre-commit run --all-files || echo "--- pre-commit failed ---" >&2; \
 		echo "======"
 
 .PHONY: ruff-fixes
 ruff-fixes:  ## fix the code using ruff
     # format before and after checking so that the formatted stuff is checked and
     # the fixed stuff is formatted
-	uvx ruff@0.6.9 format
-	uvx ruff@0.6.9 check --fix
-	uvx ruff@0.6.9 format
+	uvx ruff@0.15.22 format
+	uvx ruff@0.15.22 check --fix
+	uvx ruff@0.15.22 format
 
 .PHONY: ctt
 ctt:  ## run ctt (copier-template-tester) to generate output from running this template with the config defined in `ctt.toml`
@@ -44,9 +44,9 @@ test:  ## run the tests
 
 .PHONY: changelog-draft
 changelog-draft:  ## compile a draft of the next changelog
-	uvx towncrier build --draft --version 0.1.0
+	uv run towncrier build --draft --version $(shell uv version --short)
 
 .PHONY: virtual-environment
 virtual-environment:  ## update virtual environment, create a new one if it doesn't already exist
 	uv sync
-	uvx	pre-commit install
+	uvx pre-commit install

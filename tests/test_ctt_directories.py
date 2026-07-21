@@ -1,4 +1,3 @@
-# ruff: noqa: S603
 """
 Test directories made with copier-template-tester (ctt)
 

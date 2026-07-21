@@ -46,7 +46,7 @@ runs:
 
     - name: Restore raw inputs
       if: steps.raw-cache-key.outputs.found == 'true'
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ inputs.cache-path }}
         key: bookshelf-raw-${{ runner.os }}-${{ steps.raw-cache-key.outputs.key }}

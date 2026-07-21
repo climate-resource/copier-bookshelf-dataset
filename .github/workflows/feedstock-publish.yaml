@@ -41,10 +41,10 @@ jobs:
       outcome: ${{ steps.publish.outputs.outcome }}
     steps:
       - name: Check out feedstock
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Check out matching feedstock action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ job.workflow_repository }}
           ref: ${{ job.workflow_sha }}

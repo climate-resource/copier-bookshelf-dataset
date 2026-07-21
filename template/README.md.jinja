@@ -31,3 +31,13 @@ The reusable publish job carries `environment: deploy`, so those environment sec
 
 Identical inputs must create identical bytes and stable lineage identifiers.
 Change the hardcoded `version` in `build.py` when publishing a new data version.
+
+## Releasing
+
+Dispatch the "Bump version" workflow and pick a bump rule.
+It bumps the version with `uv version`, builds the CHANGELOG with towncrier, tags,
+and drafts the GitHub release, all in one run.
+
+Publishing that draft release by hand is what triggers the publish workflow.
+A release published by CI would not fire it,
+because releases created with `GITHUB_TOKEN` do not trigger other workflows.

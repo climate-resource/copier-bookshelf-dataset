@@ -3,14 +3,14 @@ name = "bookshelf-example"
 version = "0.1.0"
 description = "Test project made with copier-template-tester"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "bookshelf-client[cli,publish,dataframes]>=0.3.1b4",
     "pandas>=2.2",
 ]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "mypy>=1.11.2",
-    "toml>=0.10.2",
+    "towncrier>=25.8.0",
 ]

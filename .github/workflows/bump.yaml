@@ -1,78 +1,35 @@
 name: Bump version
 
+# Manually bump the version, build the CHANGELOG from the changelog/ fragments,
+# tag, and draft the GitHub release.
+#
+# After tagging, a follow-up commit lands a pre-release version on main so that
+# subsequent commits do not share the tagged version.
+
 on:
   workflow_dispatch:
     inputs:
       bump_rule:
+        description: Version bump segment(s) passed to `uv version --bump`.
         type: choice
-        description: How to bump the project's version (see https://github.com/carstencodes/pdm-bump#usage)
+        default: stable
+        required: true
         options:
-          - no-pre-release
-          # no micro because we always sit on a pre-release in main,
-          # so we would always use no-pre-release instead of micro
-          # - micro
+          - stable
+          - patch
           - minor
           - major
-          - "pre-release --pre alpha"
-          - "pre-release --pre beta"
-          - "pre-release --pre release-candidate"
-        required: true
+          - "patch alpha"
+          - "minor alpha"
+          - "major alpha"
 
 jobs:
-  bump_version:
-    name: "Bump version and create changelog"
-    if: "!startsWith(github.event.head_commit.message, 'bump:')"
-    runs-on: ubuntu-latest
-    env:
-      CI_COMMIT_EMAIL: "ci-runner@bookshelf.invalid"
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: "${{ secrets.PERSONAL_ACCESS_TOKEN }}"
-
-      - uses: ./.github/actions/setup
-
-      - name: Install pdm-bump
-        run: |
-          uv pip install pdm-bump
-
-      - name: Create bump and changelog
-        run: |
-          git config --global user.name "$GITHUB_ACTOR"
-          git config --global user.email "$CI_COMMIT_EMAIL"
-
-          BASE_VERSION="$(uv run python scripts/get-version.py)"
-          echo "Bumping from version ${BASE_VERSION}"
-
-          # Bump
-          uv run pdm bump "${{ github.event.inputs.bump_rule }}"
-
-          NEW_VERSION="$(uv run python scripts/get-version.py)"
-          echo "Bumping to version ${NEW_VERSION}"
-
-          # Build CHANGELOG
-          uvx towncrier build --yes --version "v${NEW_VERSION}"
-
-          # Commit, tag and push
-          git commit -a -m "bump: version ${BASE_VERSION} -> ${NEW_VERSION}"
-          git tag "v${NEW_VERSION}"
-          git push && git push --tags
-
-          # Exit early if the version is a pre-release
-          [[ "${NEW_VERSION}" =~ ([abrc]+) ]] && exit 0
-
-          # Bump to alpha (so that future commits do not have the same
-          # version as the tagged commit)
-          BASE_VERSION="$(uv run python scripts/get-version.py)"
-
-          # Bump to pre-release of next version
-          uv run pdm bump pre-release --pre alpha
-
-          NEW_VERSION=$(uv run python scripts/get-version.py)
-          echo "Bumping version $BASE_VERSION > $NEW_VERSION"
-
-          # Commit and push
-          git commit -n -a -m "bump(pre-release): version $BASE_VERSION > $NEW_VERSION"
-          git push
+  bump:
+    uses: climate-resource/github-actions/.github/workflows/bump.yaml@v1
+    permissions:
+      contents: write
+    with:
+      bump-rule: ${{ inputs.bump_rule }}
+      python-version: "3.12"
+      update-changelog: true
+      create-release: true
