@@ -14,7 +14,7 @@ import bookshelf_client as bookshelf
 import pandas as pd
 
 # %%
-bs, book = bookshelf.setup(version=version, visibility="public")
+recorder, book = bookshelf.setup(version=version, visibility="public")
 
 # Stable identifiers keep identical builds byte deterministic.
 resource_namespace = "{{ project_url }}"
@@ -46,14 +46,14 @@ processed_data = raw_data.assign(value=raw_data["value"] * 2)
 # %%
 async def main() -> None:
     """Register inputs and outputs with explicit lineage, then publish."""
-    raw = await bs.register(
+    raw = await recorder.register(
         raw_data,
         type="tabular",
         logical_key=f"{{ dataset_name }}/raw-{version}",
         tracking_id=raw_tracking_id,
     )
 
-    async with bs.activity(
+    async with recorder.activity(
         kind="process",
         parameters={"version": version},
         activity_id=activity_id,

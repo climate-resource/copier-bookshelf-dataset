@@ -15,7 +15,7 @@ def test_generated_feedstock_uses_record_and_replay_shape() -> None:
     assert "collection: example" in recipe
     assert "notebook: build.py" in recipe
     assert 'version = "v0.1.0"' in build
-    assert "bookshelf.setup(version=version" in build
+    assert "recorder, book = bookshelf.setup(version=version" in build
     assert "used=[raw.tracking_id]" in build
     assert '"bookshelf-client[cli,publish,dataframes]' in pyproject
     assert '"build.py" = [' in ruff
