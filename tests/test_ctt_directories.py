@@ -67,9 +67,9 @@ def test_run(ctt_dir):
     env = os.environ
     setup_venv(ctt_dir, env)
 
-    dist_dir = ctt_dir / "dist"
+    bundle_dir = ctt_dir / "bundle"
 
-    shutil.rmtree(dist_dir, ignore_errors=True)
+    shutil.rmtree(bundle_dir, ignore_errors=True)
 
     subprocess.run(
         (
@@ -81,4 +81,4 @@ def test_run(ctt_dir):
         check=True,
     )
 
-    assert dist_dir.exists()
+    assert bundle_dir.exists()

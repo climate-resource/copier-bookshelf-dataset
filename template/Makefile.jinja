@@ -50,7 +50,7 @@ virtual-environment:  ## update virtual environment, create a new one if it does
 
 run:  ## Record and validate the book bundle
 	uv run bookshelf record build.py --recipe bookshelf.yaml --bundle bundle
-	uv run python -c "from pathlib import Path; from bookshelf_client.bundle import Bundle, compute_book_bundle_hash; bundle = Bundle.read(Path('bundle')); print(compute_book_bundle_hash(bundle.manifest))"
+	uv run python scripts/validate-bundle.py
 
 
 publish:  ## publish a new release of the project

@@ -14,6 +14,4 @@ jobs:
     with:
       api-base-url: ${{ vars.BOOKSHELF_API_BASE_URL || 'https://api.climateresource.com.au/bookshelf' }}
       token-url: ${{ vars.BOOKSHELF_TOKEN_URL }}
-    secrets:
-      BOOKSHELF_CLIENT_ID: ${{ secrets.BOOKSHELF_CLIENT_ID }}
-      BOOKSHELF_CLIENT_SECRET: ${{ secrets.BOOKSHELF_CLIENT_SECRET }}
+    secrets: inherit

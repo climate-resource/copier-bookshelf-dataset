@@ -1,5 +1,5 @@
 src = [
-    "src",
+    ".",
 ]
 target-version = "py311"
 line-length = 88
@@ -40,7 +40,7 @@ ignore = [
 
 [lint.isort]
 known-first-party = [
-    "src",
+    "build",
 ]
 
 [lint.pydocstyle]

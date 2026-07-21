@@ -13,6 +13,7 @@ def test_generated_feedstock_uses_record_and_replay_shape() -> None:
     build = (GENERATED / "build.py").read_text()
     pyproject = (GENERATED / "pyproject.toml").read_text()
     ruff = (GENERATED / "ruff.toml").read_text()
+    makefile = (GENERATED / "Makefile").read_text()
 
     assert "collection: example" in recipe
     assert "notebook: build.py" in recipe
@@ -24,6 +25,10 @@ def test_generated_feedstock_uses_record_and_replay_shape() -> None:
     assert '"bookshelf-client[cli,publish,dataframes]' in pyproject
     assert '"build.py" = [' in ruff
     assert '"E402"' in ruff
+    assert 'src = [\n    ".",' in ruff
+    assert 'known-first-party = [\n    "build",' in ruff
+    assert "scripts/validate-bundle.py" in makefile
+    assert (GENERATED / "scripts" / "validate-bundle.py").exists()
 
 
 def test_generated_example_input_matches_its_declared_content_hash() -> None:
@@ -61,5 +66,6 @@ def test_generated_feedstock_calls_reusable_workflows() -> None:
         "climate-resource/bookshelf-actions/.github/workflows/feedstock-publish.yaml@v1"
         in publish
     )
-    assert "BOOKSHELF_CLIENT_ID" in publish
-    assert "BOOKSHELF_CLIENT_SECRET" in publish
+    assert "secrets: inherit" in publish
+    assert "BOOKSHELF_CLIENT_ID:" not in publish
+    assert "BOOKSHELF_CLIENT_SECRET:" not in publish
