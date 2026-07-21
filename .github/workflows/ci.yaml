@@ -11,7 +11,7 @@ jobs:
   actionlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2
         with:
           # GitHub added these reusable workflow identity properties before
@@ -26,10 +26,16 @@ jobs:
       PRE_COMMIT_HOME: /tmp/.cache/pre-commit
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
+        uses: actions/checkout@v6
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install the project
+        run: uv sync --locked
       - name: Cache pre-commit
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /tmp/.cache/pre-commit
           key: ${{ runner.os }}-pre-commit
@@ -44,19 +50,20 @@ jobs:
       matrix:
         os: [ "ubuntu-latest" ]
         python-version:
-          - "3.10"
-          - "3.11"
           - "3.12"
+          - "3.13"
     runs-on: "${{ matrix.os }}"
     defaults:
       run:
         shell: bash
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
+        uses: actions/checkout@v6
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
       - name: Run tests
         run: |
-          uv run pytest tests -r a -v
+          uv run --locked pytest tests -r a -v

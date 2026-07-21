@@ -28,7 +28,7 @@ output_tracking_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/data/{version}"
 # Replace this small cached example with a hash verified upstream input.
 
 # %%
-input_content = b"region,year,value\n" b"World,2020,1.0\n" b"World,2021,2.0\n"
+input_content = b"region,year,value\nWorld,2020,1.0\nWorld,2021,2.0\n"
 
 
 class InputHashMismatchError(ValueError):

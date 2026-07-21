@@ -18,10 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out feedstock
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Check out matching feedstock action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ job.workflow_repository }}
           ref: ${{ job.workflow_sha }}
@@ -34,7 +34,7 @@ jobs:
           python-version: ${{ inputs.python-version }}
 
       - name: Upload validated bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: bookshelf-bundle
           path: bundle

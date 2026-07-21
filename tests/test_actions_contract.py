@@ -12,8 +12,8 @@ def test_record_bundle_composite_owns_the_offline_build_path() -> None:
     action = (ACTION / "action.yml").read_text()
 
     assert 'using: "composite"' in action
-    assert "climate-resource/github-actions/setup-uv@v1" in action
-    assert "actions/cache@v4" in action
+    assert "astral-sh/setup-uv@v8.3.2" in action
+    assert "actions/cache@v6" in action
     assert "uv sync --locked" in action
     assert "bookshelf record" in action
     assert "validate_bundle.py" in action
@@ -30,7 +30,7 @@ def test_ci_reusable_workflow_is_credential_free_and_call_only() -> None:
     assert "pull_request:" not in workflow
     assert "push:" not in workflow
     assert "workflow_dispatch:" not in workflow
-    assert "actions/checkout@v4" in workflow
+    assert "actions/checkout@v6" in workflow
     assert "./.copier-bookshelf-dataset/actions/record-bundle" in workflow
     assert "secrets:" not in workflow
     assert "BOOKSHELF_TOKEN" not in workflow
@@ -109,3 +109,29 @@ def test_action_scripts_use_native_python_311_annotations() -> None:
     """Action scripts do not carry an unnecessary future annotations import."""
     for script in ACTION.glob("*.py"):
         assert "from __future__ import annotations" not in script.read_text()
+
+
+def test_nothing_depends_on_the_private_shared_actions_repository() -> None:
+    """This repository is public, so it cannot resolve private org actions.
+
+    GitHub refuses to resolve an action or reusable workflow that lives in a
+    private repository when the consumer is public, whatever the access policy
+    says. The template is covered too, because a generated feedstock may be
+    public.
+    """
+    definitions = (
+        *WORKFLOWS.glob("*.yaml"),
+        *(ROOT / "template" / ".github" / "workflows").glob("*.yaml"),
+        *ACTION.glob("*.yml"),
+    )
+
+    offenders = [
+        f"{path.relative_to(ROOT)}: {line.strip()}"
+        for path in definitions
+        for line in path.read_text().splitlines()
+        # Prose may name the repository to explain why it is not used.
+        if line.lstrip().startswith("uses:")
+        and "climate-resource/github-actions" in line
+    ]
+
+    assert not offenders

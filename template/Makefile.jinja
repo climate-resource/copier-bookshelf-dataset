@@ -31,9 +31,9 @@ checks:  ## run all the linting checks of the codebase
 ruff-fixes:  ## fix the code using ruff
     # format before and after checking so that the formatted stuff is checked and
     # the fixed stuff is formatted
-	uvx ruff@0.6.9 format
-	uvx ruff@0.6.9 check --fix
-	uvx ruff@0.6.9 format
+	uvx ruff@0.15.22 format
+	uvx ruff@0.15.22 check --fix
+	uvx ruff@0.15.22 format
 
 #.PHONY: test
 #test:  ## run the tests
@@ -41,7 +41,7 @@ ruff-fixes:  ## fix the code using ruff
 
 .PHONY: changelog-draft
 changelog-draft:  ## compile a draft of the next changelog
-	uvx towncrier build --draft --version $(shell uv run python scripts/get-version.py)
+	uv run towncrier build --draft --version $(shell uv version --short)
 
 .PHONY: virtual-environment
 virtual-environment:  ## update virtual environment, create a new one if it doesn't already exist
