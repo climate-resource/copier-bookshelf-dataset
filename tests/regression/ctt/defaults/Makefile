@@ -14,7 +14,6 @@ for line in sys.stdin:
 endef
 export PRINT_HELP_PYSCRIPT
 
-export BOOKSHELF_NOTEBOOK_DIRECTORY = src
 # TODO: Remove once a release of bookshelf is made
 export UV_PRERELEASE = allow
 
@@ -49,9 +48,10 @@ virtual-environment:  ## update virtual environment, create a new one if it does
 	uv sync
 	uvx pre-commit install
 
-run:  ## Generate the book
-	uv run bookshelf run example -o dist
+run:  ## Record and validate the book bundle
+	uv run bookshelf record build.py --recipe bookshelf.yaml --bundle bundle
+	uv run python -c "from pathlib import Path; from bookshelf_client.bundle import Bundle, compute_book_bundle_hash; bundle = Bundle.read(Path('bundle')); print(compute_book_bundle_hash(bundle.manifest))"
 
 
 publish:  ## publish a new release of the project
-	uv run bookshelf publish example
+	uv run bookshelf publish bundle

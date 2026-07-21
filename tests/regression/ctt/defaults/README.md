@@ -1,8 +1,9 @@
 # Example Dataset
 
+Test project made with copier-template-tester
 
-
-This repository contains the code to generate the Example Dataset book for the [bookshelf](https://github.com/climate-resource/bookshelf).
+This repository contains the code to generate the Example Dataset book
+for the [bookshelf](https://github.com/climate-resource/bookshelf).
 
 ## Getting started
 
@@ -12,15 +13,15 @@ Install the local virtual environment:
    make virtual-environment
 ```
 
-The configuration that describes the book is in `src/example.yaml`
-while the source code to process the book is in `src/example.py`.
+The slim record recipe is in `bookshelf.yaml`.
+The source code that builds the book is in `build.py`.
 
 
-The book can be generated using `make run`,
-which produces some outputs which are stored in `dist/`.
-This includes the generated CSV files and the rendered notebook
-that was used to generate the book.
+The book can be recorded using `make run`.
+This creates a validated local bundle in `bundle/` without API credentials.
 
-These build artifacts can then be published to the bookshelf using `make publish`
-(not currently working).
-Generally this is done automatically by the CI/CD pipeline on a new release.
+The bundle can be replayed to the Bookshelf API using `make publish`.
+The publish workflow normally performs that step on a release.
+
+Identical inputs must create identical bytes and stable lineage identifiers.
+Change the hardcoded `version` in `build.py` when publishing a new data version.

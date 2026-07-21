@@ -1,0 +1,17 @@
+name: Feedstock CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  record:
+    uses: climate-resource/bookshelf-actions/.github/workflows/feedstock-ci.yaml@v1

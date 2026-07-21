@@ -29,6 +29,9 @@ ignore = [
 ]
 
 [lint.per-file-ignores]
+"build.py" = [
+    "E402",
+]
 "test*.py" = [
     "D",
     "S101",

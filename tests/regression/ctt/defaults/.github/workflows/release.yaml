@@ -22,11 +22,6 @@ jobs:
         run: |
           PROJECT_VERSION=$(uv run python scripts/get-version.py)
           echo "PROJECT_VERSION=$PROJECT_VERSION" >> $GITHUB_ENV
-      - name: Build datasets
-        run: |
-          make run
-          zip -r data_v$PROJECT_VERSION.zip dist
-          tar -czf data_v$PROJECT_VERSION.tar.gz dist
       - name: Generate Release Notes
         run: |
           echo "" >> ".github/release_template.md"
@@ -37,17 +32,9 @@ jobs:
           echo "## Changes" >> ".github/release_template.md"
           echo "" >> ".github/release_template.md"
           git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty='format:* %h %s' --no-merges >> ".github/release_template.md"
-      - name: Archive built artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: |
-            dist
       - name: Create Release Draft
         uses: softprops/action-gh-release@v2
         with:
           body_path: ".github/release_template.md"
           token: "${{ secrets.PERSONAL_ACCESS_TOKEN }}"
           draft: true
-          files: |
-            data_*

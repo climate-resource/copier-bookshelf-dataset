@@ -22,6 +22,12 @@ ctt_directories = pytest.mark.parametrize(
 
 
 def setup_venv(ctt_dir, env):
+    if not (ctt_dir / "uv.lock").exists():
+        pytest.skip(
+            "bookshelf-client is not published at the required "
+            "record and replay version"
+        )
+
     try:
         del env["VIRTUAL_ENV"]
     except KeyError:

@@ -1,0 +1,6 @@
+collection: example
+license: MIT
+authors:
+  - name: Tim Slim
+    email: timslim@climate-resource.com
+notebook: build.py
