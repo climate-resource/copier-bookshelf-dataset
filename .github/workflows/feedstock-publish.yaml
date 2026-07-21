@@ -16,7 +16,7 @@ on:
         description: Python version used to run the feedstock
         required: false
         type: string
-        default: "3.11"
+        default: "3.12"
     secrets:
       BOOKSHELF_CLIENT_ID:
         description: WorkOS M2M client ID

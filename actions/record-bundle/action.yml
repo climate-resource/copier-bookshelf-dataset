@@ -5,7 +5,7 @@ inputs:
   python-version:
     description: "Python version used to run the feedstock"
     required: false
-    default: "3.11"
+    default: "3.12"
   build-file:
     description: "Standalone Jupytext build file"
     required: false

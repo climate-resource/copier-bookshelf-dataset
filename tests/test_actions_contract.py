@@ -81,6 +81,20 @@ def test_actionlint_is_part_of_the_existing_ci_and_immutably_pinned() -> None:
     )
 
 
+def test_feedstock_automation_defaults_to_python_312() -> None:
+    """Every entry point selects Python 3.12 when callers do not override it."""
+    entry_points = (
+        WORKFLOWS / "feedstock-ci.yaml",
+        WORKFLOWS / "feedstock-publish.yaml",
+        ACTION / "action.yml",
+    )
+
+    for entry_point in entry_points:
+        definition = entry_point.read_text()
+        assert 'default: "3.12"' in definition
+        assert 'default: "3.11"' not in definition
+
+
 def test_environment_secret_model_is_documented_without_a_handoff_file() -> None:
     """The README owns deploy environment guidance without a handoff document."""
     readme = (ROOT / "README.md").read_text()
