@@ -5,7 +5,7 @@ import json
 import sys
 from pathlib import Path
 
-from bookshelf_client.bundle import Bundle, compute_book_bundle_hash
+from bookshelf.publisher import Bundle, compute_book_bundle_hash
 
 
 def validate(root: Path) -> dict[str, object]:

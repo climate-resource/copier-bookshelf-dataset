@@ -14,10 +14,6 @@ for line in sys.stdin:
 endef
 export PRINT_HELP_PYSCRIPT
 
-# TODO: Remove once a release of bookshelf is made
-export UV_PRERELEASE = allow
-
-
 .PHONY: help
 help:  ## print short description of each target
 	@python3 -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
@@ -49,9 +45,9 @@ virtual-environment:  ## update virtual environment, create a new one if it does
 	uvx pre-commit install
 
 run:  ## Record and validate the book bundle
-	uv run bookshelf record build.py --recipe bookshelf.yaml --bundle bundle
+	uv run python scripts/record-bundle.py
 	uv run python scripts/validate-bundle.py
 
 
-publish:  ## publish a new release of the project
-	uv run bookshelf publish bundle
+publish:  ## replay the recorded bundle to the Bookshelf API
+	uv run python scripts/publish-bundle.py

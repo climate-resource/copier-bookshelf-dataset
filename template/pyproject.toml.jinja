@@ -5,7 +5,7 @@ description = "{{ dataset_description }}"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "bookshelf-client[cli,publish,dataframes]>=0.3.1b4",
+    "bookshelf[publish,dataframes]",
     "pandas>=2.2",
 ]
 
@@ -14,3 +14,7 @@ dev = [
     "mypy>=1.11.2",
     "towncrier>=25.8.0",
 ]
+
+[tool.uv.sources]
+# The SDK's record and replay surface is not on PyPI yet, so track the branch that carries it.
+bookshelf = { git = "https://github.com/climate-resource/bookshelf", branch = "feat/adopt-bookshelf-sdk", subdirectory = "packages/bookshelf" }

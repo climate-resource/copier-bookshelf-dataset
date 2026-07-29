@@ -12,15 +12,14 @@ import hashlib
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
+import bookshelf
 import pandas as pd
-from bookshelf import Bookshelf
 
 # Stable identifiers keep identical builds byte deterministic.
 resource_namespace = "https://github.com/climate-resource/ctt-project"
 raw_tracking_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/raw/{version}")
-raw_activity_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/fetch/{version}")
-process_activity_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/process/{version}")
 output_tracking_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/data/{version}")
+build_activity_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/build/{version}")
 
 # %% [markdown]
 # # Fetch
@@ -59,37 +58,28 @@ processed_data = raw_data.assign(value=raw_data["value"] * 2)
 
 
 # %%
-with Bookshelf() as client:
-    with client.activity(
-        kind="fetch",
-        config={"version": version},
-        activity_id=raw_activity_id,
-    ) as activity:
-        raw = activity.register(
-            raw_data,
-            type="tabular",
-            logical_key=f"example/raw-{version}",
-            tracking_id=raw_tracking_id,
-        )
+# The collection, licence and authors come from bookshelf.yaml.
+client, draft = bookshelf.setup(version=version, visibility="public")
 
-    with client.activity(
-        kind="process",
-        config={"version": version},
-        activity_id=process_activity_id,
-    ) as activity:
-        data = activity.register(
-            processed_data,
-            type="timeseries",
-            logical_key=f"example/data-{version}",
-            used=[raw.tracking_id],
-            tracking_id=output_tracking_id,
-        )
-
-    draft = client.draft_book(
-        "example",
-        version=version,
-        license="MIT",
-        visibility="public",
+# A recorded build carries exactly one activity block.
+with client.activity(
+    kind="build",
+    config={"version": version},
+    activity_id=build_activity_id,
+) as activity:
+    raw = activity.register(
+        raw_data,
+        type="tabular",
+        logical_key=f"example/raw-{version}",
+        tracking_id=raw_tracking_id,
     )
-    draft.attach(data, name_in_book="data")
-    draft.publish()
+    data = activity.register(
+        processed_data,
+        type="timeseries",
+        logical_key=f"example/data-{version}",
+        used=[raw.tracking_id],
+        tracking_id=output_tracking_id,
+    )
+
+draft.attach(data, name_in_book="data")
+draft.publish()

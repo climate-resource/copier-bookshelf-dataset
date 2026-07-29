@@ -15,7 +15,7 @@ def test_record_bundle_composite_owns_the_offline_build_path() -> None:
     assert "astral-sh/setup-uv@v8.3.2" in action
     assert "actions/cache@v6" in action
     assert "uv sync --locked" in action
-    assert "bookshelf record" in action
+    assert "record_bundle.py" in action
     assert "validate_bundle.py" in action
     assert 'python3 "${GITHUB_ACTION_PATH}/cache_key.py"' in action
     assert "BOOKSHELF_ACTION_PATH" in action
@@ -57,7 +57,7 @@ def test_publish_reusable_workflow_uses_deploy_environment_secrets() -> None:
     publisher = (ACTION / "publish_bundle.py").read_text()
     assert '"outcome": "no-op"' in publisher
     assert publisher.index('"outcome": "no-op"') < publisher.index(
-        "artifacts = await replay"
+        "published = replay_bundle_sync"
     )
 
 
