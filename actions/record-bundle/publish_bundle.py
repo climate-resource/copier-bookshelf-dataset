@@ -17,20 +17,27 @@ def publish(root: Path, base_url: str, token: str) -> dict[str, object]:
 
     bundle_hash = compute_book_bundle_hash(bundle.manifest)
     with Bookshelf(base_url, auth=token) as client:
-        # The bundle hash selects an existing edition, so this probe is idempotent.
-        existing = client.draft_book(
+        # The bundle hash resolves to an existing edition or draft, which is how a
+        # rerun is told apart from a first publish. This repeats the call replay makes,
+        # so it has to send every framing field replay sends. A first run would
+        # otherwise create the draft without them, and replay would then resolve to
+        # that draft rather than fill them in.
+        drafted = client.draft_book(
             framing.volume,
             version=framing.version,
+            description=framing.description,
+            citation_doi=framing.citation_doi,
             license=framing.license,
             visibility=framing.visibility,
+            metadata=framing.metadata,
             bundle_hash=bundle_hash,
         )
-        if existing.status == "published":
+        if drafted.status == "published":
             return {
                 "outcome": "no-op",
                 "volume": framing.volume,
                 "version": framing.version,
-                "edition": existing.metadata.edition,
+                "edition": drafted.metadata.edition,
                 "bundle_hash": bundle_hash,
                 "resources": 0,
             }

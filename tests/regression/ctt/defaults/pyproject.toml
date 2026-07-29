@@ -16,5 +16,6 @@ dev = [
 ]
 
 [tool.uv.sources]
-# The SDK's record and replay surface is not on PyPI yet, so track the branch that carries it.
+# No published release carries the SDK's record and replay surface, so this tracks a branch.
+# A branch is not a fixed point, so uv.lock is what makes a build reproducible.
 bookshelf = { git = "https://github.com/climate-resource/bookshelf", branch = "feat/adopt-bookshelf-sdk", subdirectory = "packages/bookshelf" }
