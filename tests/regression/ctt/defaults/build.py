@@ -58,7 +58,8 @@ processed_data = raw_data.assign(value=raw_data["value"] * 2)
 
 
 # %%
-# Under `make run` the collection, licence and authors come from bookshelf.yaml.
+# The collection, licence and authors come from bookshelf.yaml.
+# This file is executed by the recorder, so it does not construct a client itself.
 client, draft = bookshelf.setup(version=version, visibility="public")
 
 # A recorded build carries exactly one activity block.
