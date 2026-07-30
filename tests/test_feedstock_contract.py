@@ -16,12 +16,14 @@ def test_generated_feedstock_uses_record_and_replay_shape() -> None:
     makefile = (GENERATED / "Makefile").read_text()
 
     assert "collection: example" in recipe
+    assert "visibility: public" in recipe
     assert "notebook: build.py" in recipe
     assert 'version = "v0.1.0"' in build
     assert 'input_sha256 = "sha256:' in build
     assert 'Path(".cache")' in build
     assert "import bookshelf" in build
-    assert "client, draft = bookshelf.setup(" in build
+    assert "client, draft = bookshelf.setup(version=version)" in build
+    assert "visibility=" not in build
     assert "with client.activity(" in build
     assert "raw = activity.register(" in build
     assert "data = activity.register(" in build

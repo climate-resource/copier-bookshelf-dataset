@@ -1,5 +1,6 @@
 collection: example
 license: MIT
+visibility: public
 authors:
   - name: Tim Slim
     email: timslim@climate-resource.com
