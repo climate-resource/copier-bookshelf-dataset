@@ -29,8 +29,12 @@ Set the public `BOOKSHELF_TOKEN_URL` repository variable to the WorkOS AuthKit t
 The generated publish caller uses `secrets: inherit`.
 The reusable publish job carries `environment: deploy`, so those environment secrets are resolved when that job starts.
 
-Identical inputs must create identical bytes and stable lineage identifiers.
+Identical inputs must create identical data bytes and stable lineage identifiers.
 Change the hardcoded `version` in `build.py` when publishing a new data version.
+
+The recorded bundle also carries the executed notebook, so its bundle hash covers the build source.
+Any edit to `build.py`, a comment included, produces a new bundle hash.
+Publishing after a source-only edit therefore creates a new edition whose data is unchanged.
 
 ## Releasing
 

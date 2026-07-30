@@ -25,6 +25,9 @@ build_activity_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/build/{version}"
 # # Fetch
 #
 # Replace this small cached example with a hash verified upstream input.
+# `input_sha256` is the contract, not the bytes below.
+# The cache is only written when it is absent,
+# so editing these bytes needs `.cache` cleared.
 
 # %%
 input_content = b"region,year,value\nWorld,2020,1.0\nWorld,2021,2.0\n"
@@ -32,6 +35,13 @@ input_content = b"region,year,value\nWorld,2020,1.0\nWorld,2021,2.0\n"
 
 class InputHashMismatchError(ValueError):
     """Raised when cached input bytes do not match their declared hash."""
+
+    def __init__(self, path: Path, actual: str, expected: str) -> None:
+        super().__init__(
+            f"{path} hashes to {actual}, but this build declares {expected}. "
+            "Update input_sha256 to accept the new bytes, "
+            "or delete the cached file to fetch the input again."
+        )
 
 
 def fetch_input(expected_sha256: str) -> Path:
@@ -43,7 +53,7 @@ def fetch_input(expected_sha256: str) -> Path:
 
     actual = f"sha256:{hashlib.sha256(cache.read_bytes()).hexdigest()}"
     if actual != expected_sha256:
-        raise InputHashMismatchError
+        raise InputHashMismatchError(cache, actual, expected_sha256)
     return cache
 
 
