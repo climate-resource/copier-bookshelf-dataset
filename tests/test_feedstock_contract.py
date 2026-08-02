@@ -40,11 +40,26 @@ def test_generated_feedstock_uses_record_and_replay_shape() -> None:
     assert '"E402"' in ruff
     assert 'src = [\n    ".",' in ruff
     assert 'known-first-party = [\n    "build",' in ruff
-    assert "scripts/record-bundle.py" in makefile
-    assert "scripts/validate-bundle.py" in makefile
-    assert "scripts/publish-bundle.py" in makefile
-    for script in ("record-bundle.py", "validate-bundle.py", "publish-bundle.py"):
-        assert (GENERATED / "scripts" / script).exists()
+    assert "uv run bookshelf record --force" in makefile
+    assert "uv run bookshelf validate" in makefile
+    assert "uv run bookshelf publish" in makefile
+    assert "uv run bookshelf publish --dry-run" in makefile
+
+
+def test_generated_feedstock_carries_no_python_beyond_the_build_file() -> None:
+    """The CLI owns record, validate and replay, so a feedstock ships no scripts."""
+    # Build products, not shipped files: the environment and a recorded bundle
+    # both appear here once the regression fixture has been run.
+    not_shipped = {".venv", ".git", "__pycache__", "bundle"}
+
+    shipped = [
+        path
+        for path in GENERATED.rglob("*.py")
+        if not not_shipped.intersection(path.relative_to(GENERATED).parts)
+    ]
+
+    assert not (GENERATED / "scripts").exists()
+    assert [path.name for path in shipped] == ["build.py"]
 
 
 def test_generated_example_input_matches_its_declared_content_hash() -> None:
