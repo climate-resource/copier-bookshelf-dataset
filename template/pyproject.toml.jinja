@@ -16,6 +16,5 @@ dev = [
 ]
 
 [tool.uv.sources]
-# No published release carries the SDK's record and replay surface, so this tracks a branch.
-# A branch is not a fixed point, so uv.lock is what makes a build reproducible.
+# Using an unpublished branch for testing
 bookshelf = { git = "https://github.com/climate-resource/bookshelf", branch = "feat/adopt-bookshelf-sdk", subdirectory = "packages/bookshelf" }

@@ -25,10 +25,6 @@ build_activity_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/build/{version}"
 # # Fetch
 #
 # Replace this small cached example with a hash verified upstream input.
-# `input_sha256` is the contract, not the bytes below.
-# The cache is only written when it is absent,
-# so editing these bytes needs `.cache` cleared.
-
 # %%
 input_content = b"region,year,value\nWorld,2020,1.0\nWorld,2021,2.0\n"
 
@@ -65,7 +61,6 @@ raw_data = pd.read_csv(raw_path)
 
 # %%
 processed_data = raw_data.assign(value=raw_data["value"] * 2)
-
 
 # %%
 # The collection, licence, visibility and authors come from bookshelf.yaml.
