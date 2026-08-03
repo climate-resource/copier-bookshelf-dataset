@@ -1,6 +1,9 @@
 collection: {{ dataset_name }}
 license: MIT
-visibility: public
+# A book may not be wider than any of its resources.
+# Everything the recorder registers is hidden, the build.ipynb and build.html documents included,
+# so widening this needs every resource widened first.
+visibility: hidden
 authors:
   - name: {{ author }}
     email: {{ author_email }}
