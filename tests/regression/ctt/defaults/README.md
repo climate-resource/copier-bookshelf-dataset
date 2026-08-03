@@ -43,8 +43,9 @@ The reusable publish job carries `environment: deploy`, so those environment sec
 
 The book is recorded as `hidden`, because a book may not be wider than any of its resources
 and every resource the recorder registers is hidden.
-Widening the book to `org` or `public` means widening its resources first,
-including the `build.ipynb` and `build.html` documents the recorder adds itself.
+Widening the book to `org` or `public` means widening its resources first.
+The `build.ipynb` and `build.html` documents are registered by the recorder and are always hidden,
+so widening a book needs a change in `bookshelf` rather than anything you can do here.
 
 Identical inputs must create identical data bytes and stable lineage identifiers.
 Change the hardcoded `version` in `build.py` when publishing a new data version.
