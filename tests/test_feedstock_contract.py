@@ -16,8 +16,6 @@ def test_generated_feedstock_uses_record_and_replay_shape() -> None:
     makefile = (GENERATED / "Makefile").read_text()
 
     assert "collection: example" in recipe
-    # A book may not be wider than its resources,
-    # and the recorder registers all of them as hidden.
     assert "visibility: hidden" in recipe
     assert "notebook: build.py" in recipe
     assert 'version = "v0.1.0"' in build
