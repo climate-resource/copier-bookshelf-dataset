@@ -41,11 +41,10 @@ Set the public `BOOKSHELF_TOKEN_URL` repository variable to the WorkOS AuthKit t
 The generated publish caller uses `secrets: inherit`.
 The reusable publish job carries `environment: deploy`, so those environment secrets are resolved when that job starts.
 
-The book is recorded as `hidden`, because a book may not be wider than any of its resources.
-Every resource the recorder registers is hidden.
-The `build.ipynb` and `build.html` documents are registered by the recorder itself,
-so `org` or `public` is not reachable from a feedstock.
-Widening a book needs a change in `bookshelf` first.
+`visibility` in `bookshelf.yaml` sets the tier of the book and of everything the build records,
+the `build.ipynb` and `build.html` documents included.
+Pass `visibility=` on a single `activity.register(...)` call to narrow that one resource,
+so a public book can still hold a member only your organisation may read.
 
 Identical inputs must create identical data bytes and stable lineage identifiers.
 Change the hardcoded `version` in `build.py` when publishing a new data version.
