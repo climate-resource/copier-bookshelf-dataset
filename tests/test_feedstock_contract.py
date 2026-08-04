@@ -62,20 +62,32 @@ def test_generated_feedstock_carries_no_python_beyond_the_build_file() -> None:
     assert [path.name for path in shipped] == ["build.py"]
 
 
-def test_generated_example_input_matches_its_declared_content_hash() -> None:
-    """The cached example input is independently verified by the contract test."""
+def _build_assignments(*names: str) -> dict[str, object]:
+    """Evaluate the named module level literal assignments in the generated build."""
     tree = ast.parse((GENERATED / "build.py").read_text())
-    assignments = {
+    return {
         node.targets[0].id: ast.literal_eval(node.value)
         for node in tree.body
         if isinstance(node, ast.Assign)
         and len(node.targets) == 1
         and isinstance(node.targets[0], ast.Name)
-        and node.targets[0].id in {"input_content", "input_sha256"}
+        and node.targets[0].id in names
     }
+
+
+def test_generated_example_input_matches_its_declared_content_hash() -> None:
+    """The cached example input is independently verified by the contract test."""
+    assignments = _build_assignments("input_content", "input_sha256")
 
     actual = "sha256:" + hashlib.sha256(assignments["input_content"]).hexdigest()
     assert actual == assignments["input_sha256"]
+
+
+def test_generated_example_input_is_seeded_with_the_dataset_name() -> None:
+    """Registration deduplicates on content, so the example differs per feedstock."""
+    assignments = _build_assignments("input_content")
+
+    assert b"example" in assignments["input_content"]
 
 
 def test_generated_feedstock_calls_reusable_workflows() -> None:
