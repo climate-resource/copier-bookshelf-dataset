@@ -1,3 +1,5 @@
+{# Three rows keep the rendered literal past the line limit for the shortest allowed
+   dataset name, so ruff format leaves it split one row per line. #}
 {% set input_rows = [
     "region,dataset,year,value",
     "World," ~ dataset_name ~ ",2020,1.0",
