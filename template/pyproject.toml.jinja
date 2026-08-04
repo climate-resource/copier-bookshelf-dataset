@@ -5,7 +5,7 @@ description = "{{ dataset_description }}"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "bookshelf-client[cli,publish,dataframes]>=0.3.1b4",
+    "bookshelf[publish,dataframes]",
     "pandas>=2.2",
 ]
 
@@ -14,3 +14,8 @@ dev = [
     "mypy>=1.11.2",
     "towncrier>=25.8.0",
 ]
+
+[tool.uv.sources]
+# No published release carries the SDK's record and replay surface, so this tracks a branch.
+# A branch is not a fixed point, so uv.lock is what makes a build reproducible.
+bookshelf = { git = "https://github.com/climate-resource/bookshelf", branch = "feat/adopt-bookshelf-sdk", subdirectory = "packages/bookshelf" }

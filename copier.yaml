@@ -47,8 +47,17 @@ _envops:
     trim_blocks: true
     lstrip_blocks: true
 
+# Recording derives provenance from git, so it needs an origin remote and a commit to point at.
+# CI syncs with --locked, so it needs a lock file committed alongside them.
+# Each task is guarded, so re-running the template never rewrites an existing repository.
 _tasks:
     - '[ ! -d ".git" ] && git init || exit 0'
+    - 'git remote get-url origin >/dev/null 2>&1 || git remote add origin {{ project_url }}'
+    - '[ -f uv.lock ] || uv lock'
     - 'git add .'
+    - >-
+      git rev-parse HEAD >/dev/null 2>&1
+      || git -c user.name="{{ author }}" -c user.email="{{ author_email }}"
+      commit -q -m "Initial scaffold from copier-bookshelf-dataset"
 
 _subdirectory: template

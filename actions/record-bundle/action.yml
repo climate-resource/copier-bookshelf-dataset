@@ -62,7 +62,7 @@ runs:
         RECIPE: ${{ inputs.recipe }}
         BUNDLE: ${{ inputs.bundle }}
       run: >-
-        uv run bookshelf record "${BUILD_FILE}"
+        uv run python "${GITHUB_ACTION_PATH}/record_bundle.py" "${BUILD_FILE}"
         --recipe "${RECIPE}"
         --bundle "${BUNDLE}"
 

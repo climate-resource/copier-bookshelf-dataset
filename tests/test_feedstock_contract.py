@@ -16,29 +16,35 @@ def test_generated_feedstock_uses_record_and_replay_shape() -> None:
     makefile = (GENERATED / "Makefile").read_text()
 
     assert "collection: example" in recipe
+    assert "visibility: public" in recipe
     assert "notebook: build.py" in recipe
     assert 'version = "v0.1.0"' in build
     assert 'input_sha256 = "sha256:' in build
     assert 'Path(".cache")' in build
-    assert "from bookshelf import Bookshelf" in build
-    assert "with Bookshelf() as client:" in build
+    assert "import bookshelf" in build
+    assert "client, draft = bookshelf.setup(version=version)" in build
+    assert "visibility=" not in build
     assert "with client.activity(" in build
     assert "raw = activity.register(" in build
     assert "data = activity.register(" in build
-    assert "draft = client.draft_book(" in build
     assert 'draft.attach(data, name_in_book="data")' in build
     assert "draft.publish()" in build
     assert "asyncio" not in build
     assert "async def" not in build
     assert "await " not in build
     assert "used=[raw.tracking_id]" in build
-    assert '"bookshelf-client[cli,publish,dataframes]' in pyproject
+    assert '"bookshelf[publish,dataframes]"' in pyproject
+    assert "climate-resource/bookshelf" in pyproject
+    assert 'branch = "feat/adopt-bookshelf-sdk"' in pyproject
     assert '"build.py" = [' in ruff
     assert '"E402"' in ruff
     assert 'src = [\n    ".",' in ruff
     assert 'known-first-party = [\n    "build",' in ruff
+    assert "scripts/record-bundle.py" in makefile
     assert "scripts/validate-bundle.py" in makefile
-    assert (GENERATED / "scripts" / "validate-bundle.py").exists()
+    assert "scripts/publish-bundle.py" in makefile
+    for script in ("record-bundle.py", "validate-bundle.py", "publish-bundle.py"):
+        assert (GENERATED / "scripts" / script).exists()
 
 
 def test_generated_example_input_matches_its_declared_content_hash() -> None:
