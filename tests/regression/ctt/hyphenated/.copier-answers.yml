@@ -1,0 +1,9 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: HEAD
+_src_path: ../../../../copier-bookshelf-dataset
+author: Ada Lovelace
+author_email: ada.lovelace@climate-resource.com
+dataset_description: Historical national emissions, hyphenated and numbered.
+dataset_name: primap-hist-2024
+dataset_name_human: PRIMAP-hist 2024
+project_url: https://github.com/climate-resource/bookshelf-primap-hist-2024

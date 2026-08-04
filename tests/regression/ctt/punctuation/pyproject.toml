@@ -1,0 +1,20 @@
+[project]
+name = "bookshelf-ngfs-scenarios"
+version = "0.1.0"
+description = "Scenario data for O\u0027Brien\u0027s review: quoted, apostrophised and colonised."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "bookshelf[publish,dataframes]",
+    "pandas>=2.2",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.11.2",
+    "towncrier>=25.8.0",
+]
+
+[tool.uv.sources]
+# Using an unpublished branch for testing
+bookshelf = { git = "https://github.com/climate-resource/bookshelf", branch = "feat/adopt-bookshelf-sdk", subdirectory = "packages/bookshelf" }
