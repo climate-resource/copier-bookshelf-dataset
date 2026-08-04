@@ -80,12 +80,14 @@ jobs:
         shell: bash
         env:
           API_BASE_URL: ${{ inputs.api-base-url }}
+          # The CLI reads the credential from the environment,
+          # so the token never reaches argv or the process list.
           BOOKSHELF_TOKEN: ${{ steps.token.outputs.token }}
         run: |
           set -euo pipefail
-          result="$(uv run python "${BOOKSHELF_ACTION_PATH}/publish_bundle.py" bundle \
-            --base-url "${API_BASE_URL}" \
-            --token "${BOOKSHELF_TOKEN}")"
+          result="$(uv run bookshelf publish bundle \
+            --api-url "${API_BASE_URL}" \
+            --json)"
           outcome="$(jq -er '.outcome' <<<"${result}")"
           echo "outcome=${outcome}" >> "${GITHUB_OUTPUT}"
           {

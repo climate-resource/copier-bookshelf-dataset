@@ -15,11 +15,18 @@ def test_record_bundle_composite_owns_the_offline_build_path() -> None:
     assert "astral-sh/setup-uv@v8.3.2" in action
     assert "actions/cache@v6" in action
     assert "uv sync --locked" in action
-    assert "record_bundle.py" in action
-    assert "validate_bundle.py" in action
+    assert "uv run bookshelf record" in action
+    assert "uv run bookshelf validate" in action
     assert 'python3 "${GITHUB_ACTION_PATH}/cache_key.py"' in action
-    assert "BOOKSHELF_ACTION_PATH" in action
-    assert "contract" in action
+
+
+def test_the_composite_action_ships_only_the_cache_key_helper() -> None:
+    """The CLI owns record and validate, so no bundle script sits beside it.
+
+    cache_key.py stays because it AST-parses the build file for declared input
+    hashes, which is a CI concern rather than an SDK one.
+    """
+    assert [path.name for path in ACTION.glob("*.py")] == ["cache_key.py"]
 
 
 def test_ci_reusable_workflow_is_credential_free_and_call_only() -> None:
@@ -51,14 +58,13 @@ def test_publish_reusable_workflow_uses_deploy_environment_secrets() -> None:
     assert "environment: deploy" in workflow
     assert "grant_type=client_credentials" in workflow
     assert "./.copier-bookshelf-dataset/actions/record-bundle" in workflow
-    assert "publish_bundle.py" in workflow
+    assert "uv run bookshelf publish bundle" in workflow
     assert "Publish outcome" in workflow
 
-    publisher = (ACTION / "publish_bundle.py").read_text()
-    assert '"outcome": "no-op"' in publisher
-    assert publisher.index('"outcome": "no-op"') < publisher.index(
-        "published = replay_bundle_sync"
-    )
+    # The credential reaches the CLI through the environment.
+    # A token on argv is visible in the process list and in the job log.
+    assert "--token" not in workflow
+    assert "BOOKSHELF_TOKEN: ${{ steps.token.outputs.token }}" in workflow
 
 
 def test_reusable_workflows_checkout_their_own_matching_revision() -> None:

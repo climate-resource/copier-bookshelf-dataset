@@ -45,9 +45,15 @@ virtual-environment:  ## update virtual environment, create a new one if it does
 	uvx pre-commit install
 
 run:  ## Record and validate the book bundle
-	uv run python scripts/record-bundle.py
-	uv run python scripts/validate-bundle.py
+    # --force because rebuilding is the point of this target.
+    # A bare `bookshelf record` refuses to replace a bundle that is under review.
+	uv run bookshelf record --force
+	uv run bookshelf validate
 
 
 publish:  ## replay the recorded bundle to the Bookshelf API
-	uv run python scripts/publish-bundle.py
+	uv run bookshelf publish
+
+
+publish-dry-run:  ## resolve the edition the bundle would publish to, without publishing
+	uv run bookshelf publish --dry-run
