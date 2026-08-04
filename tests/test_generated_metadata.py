@@ -5,13 +5,17 @@ files has to parse and give the answer back unchanged.
 """
 
 import ast
+import re
 import tomllib
 
 import pytest
 import yaml
-from conftest import Feedstock
+from conftest import QUESTIONS, Feedstock
 
 TOML_FILES = ("pyproject.toml", "towncrier.toml", "ruff.toml")
+
+# A workflow ships GitHub Actions expressions, which share Jinja's delimiters.
+GITHUB_EXPRESSION = re.compile(r"\$\{\{.*?\}\}", re.DOTALL)
 
 
 @pytest.mark.parametrize("name", TOML_FILES)
@@ -89,10 +93,10 @@ def test_no_generated_file_carries_unrendered_template_syntax(
     offenders = [
         name
         for name in feedstock.shipped()
-        # The workflow templates deliberately ship GitHub Actions expressions,
-        # which share Jinja's delimiters.
-        if not name.startswith(".github/")
-        and any(delimiter in feedstock.read(name) for delimiter in delimiters)
+        if any(
+            delimiter in GITHUB_EXPRESSION.sub("", feedstock.read(name))
+            for delimiter in delimiters
+        )
     ]
 
     assert not offenders
@@ -100,13 +104,4 @@ def test_no_generated_file_carries_unrendered_template_syntax(
 
 def test_answers_file_records_every_question(feedstock: Feedstock) -> None:
     """Copier updates replay the answers, so all of them have to be written down."""
-    questions = {
-        "author",
-        "author_email",
-        "dataset_name",
-        "dataset_name_human",
-        "dataset_description",
-        "project_url",
-    }
-
-    assert questions <= set(feedstock.answers)
+    assert set(QUESTIONS) <= set(feedstock.answers)

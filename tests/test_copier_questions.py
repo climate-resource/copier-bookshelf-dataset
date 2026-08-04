@@ -10,16 +10,8 @@ import warnings
 
 import jinja2
 import pytest
-import yaml
-from conftest import ROOT
+from conftest import COPIER, QUESTIONS, ROOT
 from jinja2_ansible_filters import AnsibleCoreFiltersExtension
-
-COPIER = yaml.safe_load((ROOT / "copier.yaml").read_text())
-QUESTIONS = {
-    name: value
-    for name, value in COPIER.items()
-    if not name.startswith("_") and isinstance(value, dict)
-}
 
 
 def validator_environment() -> jinja2.Environment:
@@ -153,16 +145,16 @@ def test_the_answer_sets_differ_in_the_answers_that_matter() -> None:
 
 def test_generation_tasks_are_safe_to_re_run() -> None:
     """Copier runs the tasks on every copy, including into an existing repository."""
-    tasks = COPIER["_tasks"]
+    initialise, remote, lock, stage, commit = COPIER["_tasks"]
 
     assert COPIER["_subdirectory"] == "template"
-    assert any("git init" in task for task in tasks)
-    assert any("uv lock" in task for task in tasks)
 
-    # Each task either guards itself or is idempotent on its own.
-    guarded = ("[ ! -d", "[ -f", "||", "git add .")
-    for task in tasks:
-        assert any(guard in task for guard in guarded), task
+    # Every task that writes checks first, so a second copy changes nothing.
+    assert "git init" in initialise and '[ ! -d ".git" ]' in initialise
+    assert "git remote add origin" in remote and "git remote get-url origin" in remote
+    assert "uv lock" in lock and "[ -f uv.lock ]" in lock
+    assert stage.strip() == "git add ."
+    assert "commit -q -m" in commit and "git rev-parse HEAD" in commit
 
 
 def test_the_scaffold_commit_is_attributed_to_the_author() -> None:

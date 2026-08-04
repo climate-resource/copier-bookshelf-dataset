@@ -15,6 +15,15 @@ import yaml
 ROOT = Path(__file__).parents[1]
 CTT_DIR = Path(__file__).parent / "regression" / "ctt"
 
+COPIER = yaml.safe_load((ROOT / "copier.yaml").read_text())
+
+# Copier's settings start with an underscore, so what is left is what a user answers.
+QUESTIONS = {
+    name: value
+    for name, value in COPIER.items()
+    if not name.startswith("_") and isinstance(value, dict)
+}
+
 # Build products rather than shipped files.
 # Running the regression fixture leaves an environment, a cached input and a recorded
 # bundle behind, and none of them came out of the template.
