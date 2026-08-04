@@ -2,6 +2,6 @@ collection: example
 license: MIT
 visibility: public
 authors:
-  - name: Tim Slim
+  - name: "Tim Slim"
     email: timslim@climate-resource.com
 notebook: build.py

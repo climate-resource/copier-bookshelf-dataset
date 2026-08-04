@@ -3,6 +3,7 @@
 name = "bookshelf-example"
 filename = "CHANGELOG.md"
 directory = "changelog/"
+# The human name is free text, so it is escaped rather than interpolated raw.
 title_format = "## Example Dataset {version} ({project_date})"
 underlines = [
     "",

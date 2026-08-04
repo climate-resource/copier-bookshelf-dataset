@@ -1,7 +1,7 @@
 [project]
 name = "bookshelf-{{ dataset_name }}"
 version = "0.1.0"
-description = "{{ dataset_description }}"
+description = {{ dataset_description | tojson }}
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

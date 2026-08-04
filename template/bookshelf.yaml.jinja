@@ -2,6 +2,6 @@ collection: {{ dataset_name }}
 license: MIT
 visibility: public
 authors:
-  - name: {{ author }}
+  - name: {{ author | tojson }}
     email: {{ author_email }}
 notebook: build.py

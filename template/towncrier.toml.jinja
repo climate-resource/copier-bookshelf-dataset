@@ -3,7 +3,8 @@
 name = "bookshelf-{{ dataset_name }}"
 filename = "CHANGELOG.md"
 directory = "changelog/"
-title_format = "## {{ dataset_name_human }} {version} ({project_date})"
+# The human name is free text, so it is escaped rather than interpolated raw.
+title_format = {{ ("## " ~ dataset_name_human ~ " {version} ({project_date})") | tojson }}
 underlines = [
     "",
     "",
