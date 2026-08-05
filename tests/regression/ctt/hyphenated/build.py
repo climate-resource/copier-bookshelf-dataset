@@ -1,20 +1,11 @@
-{# Three rows keep the rendered literal past the line limit for the shortest allowed
-   dataset name, so ruff format leaves it split one row per line. #}
-{% set input_rows = [
-    "region,dataset,year,value",
-    "World," ~ dataset_name ~ ",2020,1.0",
-    "World," ~ dataset_name ~ ",2021,2.0",
-    "World," ~ dataset_name ~ ",2022,3.0",
-] %}
-{% set input_csv = input_rows | join("\n") ~ "\n" %}
 # %% [markdown]
-# # {{ dataset_name_human }}
+# # PRIMAP-hist 2024
 #
-# {{ dataset_description }}
+# Historical national emissions, hyphenated and numbered.
 
 # %% tags=["parameters"]
 version = "v0.1.0"
-input_sha256 = "sha256:{{ input_csv | hash('sha256') }}"
+input_sha256 = "sha256:e34c37970248b64af3b9bccc471fe9bb6b8780c434a20166ca086988c6b2e9b3"
 
 # %%
 import hashlib
@@ -25,7 +16,7 @@ import bookshelf
 import pandas as pd
 
 # Stable identifiers keep identical builds byte deterministic.
-resource_namespace = "{{ project_url }}"
+resource_namespace = "https://github.com/climate-resource/bookshelf-primap-hist-2024"
 raw_tracking_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/raw/{version}")
 output_tracking_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/data/{version}")
 build_activity_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/build/{version}")
@@ -39,9 +30,10 @@ build_activity_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/build/{version}"
 # Registration deduplicates on content, so identical example bytes would alias
 # onto whichever feedstock published them first and could not then be attached.
 input_content = (
-{% for row in input_rows %}
-    b{{ (row ~ "\n") | tojson }}
-{% endfor %}
+    b"region,dataset,year,value\n"
+    b"World,primap-hist-2024,2020,1.0\n"
+    b"World,primap-hist-2024,2021,2.0\n"
+    b"World,primap-hist-2024,2022,3.0\n"
 )
 
 
@@ -58,7 +50,7 @@ class InputHashMismatchError(ValueError):
 
 def fetch_input(expected_sha256: str) -> Path:
     """Cache the example input and verify its declared content hash."""
-    cache = Path(".cache") / "{{ dataset_name }}.csv"
+    cache = Path(".cache") / "primap-hist-2024.csv"
     cache.parent.mkdir(parents=True, exist_ok=True)
     if not cache.exists():
         cache.write_bytes(input_content)
@@ -92,13 +84,13 @@ with client.activity(
     raw = activity.register(
         raw_data,
         type="tabular",
-        logical_key=f"{{ dataset_name }}/raw-{version}",
+        logical_key=f"primap-hist-2024/raw-{version}",
         tracking_id=raw_tracking_id,
     )
     data = activity.register(
         processed_data,
         type="timeseries",
-        logical_key=f"{{ dataset_name }}/data-{version}",
+        logical_key=f"primap-hist-2024/data-{version}",
         used=[raw.tracking_id],
         tracking_id=output_tracking_id,
     )

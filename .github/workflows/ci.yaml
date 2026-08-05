@@ -64,6 +64,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
+      - name: Generate the feedstock fixtures
+        # The recording tests sync a generated feedstock against its lock file, and
+        # copier writes that file rather than the repository committing it.
+        # Without this step those tests skip and recording goes uncovered.
+        run: |
+          uv run --locked ctt
       - name: Run tests
         run: |
           uv run --locked pytest tests -r a -v

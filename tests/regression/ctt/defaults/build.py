@@ -5,7 +5,7 @@
 
 # %% tags=["parameters"]
 version = "v0.1.0"
-input_sha256 = "sha256:9d4044e80da87a78fcd9153422b1f50ea527081f9f1a70a8d9e0248c77ff4e71"
+input_sha256 = "sha256:0989f49d0c9f6f9435eb94490250dff3d001c0efb6c3e12c936b81731d8546d2"
 
 # %%
 import hashlib
@@ -26,7 +26,15 @@ build_activity_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/build/{version}"
 #
 # Replace this small cached example with a hash verified upstream input.
 # %%
-input_content = b"region,year,value\nWorld,2020,1.0\nWorld,2021,2.0\n"
+# The dataset column keeps this example distinct from every other generated feedstock.
+# Registration deduplicates on content, so identical example bytes would alias
+# onto whichever feedstock published them first and could not then be attached.
+input_content = (
+    b"region,dataset,year,value\n"
+    b"World,example,2020,1.0\n"
+    b"World,example,2021,2.0\n"
+    b"World,example,2022,3.0\n"
+)
 
 
 class InputHashMismatchError(ValueError):

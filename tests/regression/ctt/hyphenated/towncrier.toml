@@ -1,16 +1,16 @@
 [tool.towncrier]
 # This runs towncrier in non-python mode, so we need to specify the project name and version at run-time
-name = "bookshelf-{{ dataset_name }}"
+name = "bookshelf-primap-hist-2024"
 filename = "CHANGELOG.md"
 directory = "changelog/"
 # The human name is free text, so it is escaped rather than interpolated raw.
-title_format = {{ ("## " ~ dataset_name_human ~ " {version} ({project_date})") | tojson }}
+title_format = "## PRIMAP-hist 2024 {version} ({project_date})"
 underlines = [
     "",
     "",
     "",
 ]
-issue_format = "[#{issue}]({{project_url}}/pull/{issue})"
+issue_format = "[#{issue}](https://github.com/climate-resource/bookshelf-primap-hist-2024/pull/{issue})"
 type = [
     { directory = "breaking", name = "Breaking Changes", showcontent = true },
     { directory = "deprecation", name = "Deprecations", showcontent = true },

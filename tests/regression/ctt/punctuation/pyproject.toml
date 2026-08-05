@@ -1,7 +1,7 @@
 [project]
-name = "bookshelf-{{ dataset_name }}"
+name = "bookshelf-ngfs-scenarios"
 version = "0.1.0"
-description = {{ dataset_description | tojson }}
+description = "Scenario data for O\u0027Brien\u0027s review: quoted, apostrophised and colonised."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

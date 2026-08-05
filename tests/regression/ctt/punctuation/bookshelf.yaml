@@ -1,0 +1,7 @@
+collection: ngfs-scenarios
+license: MIT
+visibility: public
+authors:
+  - name: "Ren\u00e9e O\u0027Brien"
+    email: renee.obrien@climate-resource.com
+notebook: build.py

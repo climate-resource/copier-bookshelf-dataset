@@ -1,0 +1,10 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: HEAD
+_src_path: ../../../../copier-bookshelf-dataset
+author: Renée O'Brien
+author_email: renee.obrien@climate-resource.com
+dataset_description: 'Scenario data for O''Brien''s review: quoted, apostrophised
+    and colonised.'
+dataset_name: ngfs-scenarios
+dataset_name_human: NGFS "Net Zero" Scenarios
+project_url: https://github.com/climate-resource/bookshelf-ngfs-scenarios

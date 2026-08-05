@@ -1,7 +1,7 @@
 [project]
-name = "bookshelf-{{ dataset_name }}"
+name = "bookshelf-primap-hist-2024"
 version = "0.1.0"
-description = {{ dataset_description | tojson }}
+description = "Historical national emissions, hyphenated and numbered."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

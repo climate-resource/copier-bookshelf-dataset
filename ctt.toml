@@ -7,3 +7,23 @@ dataset_description = "Test project made with copier-template-tester"
 project_url = "https://github.com/climate-resource/ctt-project"
 
 [output."tests/regression/ctt/defaults"]
+
+# A hyphenated, digit bearing name is the common real case, and it is the one that
+# reaches the most places: the package name, the cache file, the logical keys and
+# the resource namespace all derive from it.
+[output."tests/regression/ctt/hyphenated"]
+author = "Ada Lovelace"
+author_email = "ada.lovelace@climate-resource.com"
+dataset_name = "primap-hist-2024"
+dataset_name_human = "PRIMAP-hist 2024"
+dataset_description = "Historical national emissions, hyphenated and numbered."
+project_url = "https://github.com/climate-resource/bookshelf-primap-hist-2024"
+
+# Prose answers land in TOML, YAML and Markdown, so quoting has to survive all three.
+[output."tests/regression/ctt/punctuation"]
+author = "Renée O'Brien"
+author_email = "renee.obrien@climate-resource.com"
+dataset_name = "ngfs-scenarios"
+dataset_name_human = 'NGFS "Net Zero" Scenarios'
+dataset_description = "Scenario data for O'Brien's review: quoted, apostrophised and colonised."
+project_url = "https://github.com/climate-resource/bookshelf-ngfs-scenarios"

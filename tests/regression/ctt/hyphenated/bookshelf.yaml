@@ -1,0 +1,7 @@
+collection: primap-hist-2024
+license: MIT
+visibility: public
+authors:
+  - name: "Ada Lovelace"
+    email: ada.lovelace@climate-resource.com
+notebook: build.py

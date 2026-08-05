@@ -1,20 +1,11 @@
-{# Three rows keep the rendered literal past the line limit for the shortest allowed
-   dataset name, so ruff format leaves it split one row per line. #}
-{% set input_rows = [
-    "region,dataset,year,value",
-    "World," ~ dataset_name ~ ",2020,1.0",
-    "World," ~ dataset_name ~ ",2021,2.0",
-    "World," ~ dataset_name ~ ",2022,3.0",
-] %}
-{% set input_csv = input_rows | join("\n") ~ "\n" %}
 # %% [markdown]
-# # {{ dataset_name_human }}
+# # NGFS "Net Zero" Scenarios
 #
-# {{ dataset_description }}
+# Scenario data for O'Brien's review: quoted, apostrophised and colonised.
 
 # %% tags=["parameters"]
 version = "v0.1.0"
-input_sha256 = "sha256:{{ input_csv | hash('sha256') }}"
+input_sha256 = "sha256:e9bb5a04d89d8c2961b65b3f8c9db0a75f0cb613fdc23b7c26ef652ad1787ecc"
 
 # %%
 import hashlib
@@ -25,7 +16,7 @@ import bookshelf
 import pandas as pd
 
 # Stable identifiers keep identical builds byte deterministic.
-resource_namespace = "{{ project_url }}"
+resource_namespace = "https://github.com/climate-resource/bookshelf-ngfs-scenarios"
 raw_tracking_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/raw/{version}")
 output_tracking_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/data/{version}")
 build_activity_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/build/{version}")
@@ -39,9 +30,10 @@ build_activity_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/build/{version}"
 # Registration deduplicates on content, so identical example bytes would alias
 # onto whichever feedstock published them first and could not then be attached.
 input_content = (
-{% for row in input_rows %}
-    b{{ (row ~ "\n") | tojson }}
-{% endfor %}
+    b"region,dataset,year,value\n"
+    b"World,ngfs-scenarios,2020,1.0\n"
+    b"World,ngfs-scenarios,2021,2.0\n"
+    b"World,ngfs-scenarios,2022,3.0\n"
 )
 
 
@@ -58,7 +50,7 @@ class InputHashMismatchError(ValueError):
 
 def fetch_input(expected_sha256: str) -> Path:
     """Cache the example input and verify its declared content hash."""
-    cache = Path(".cache") / "{{ dataset_name }}.csv"
+    cache = Path(".cache") / "ngfs-scenarios.csv"
     cache.parent.mkdir(parents=True, exist_ok=True)
     if not cache.exists():
         cache.write_bytes(input_content)
@@ -92,13 +84,13 @@ with client.activity(
     raw = activity.register(
         raw_data,
         type="tabular",
-        logical_key=f"{{ dataset_name }}/raw-{version}",
+        logical_key=f"ngfs-scenarios/raw-{version}",
         tracking_id=raw_tracking_id,
     )
     data = activity.register(
         processed_data,
         type="timeseries",
-        logical_key=f"{{ dataset_name }}/data-{version}",
+        logical_key=f"ngfs-scenarios/data-{version}",
         used=[raw.tracking_id],
         tracking_id=output_tracking_id,
     )
