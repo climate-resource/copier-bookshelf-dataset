@@ -1,14 +1,13 @@
-"""Tests for raw input content hash cache keys."""
+"""Tests for the cache key derived from the digests a recipe declares."""
 
 import hashlib
 import importlib.util
 from pathlib import Path
 
 import pytest
-from conftest import Feedstock
+from conftest import ACTION, Feedstock
 
-MODULE_PATH = Path(__file__).parents[1] / "actions" / "record-bundle" / "cache_key.py"
-SPEC = importlib.util.spec_from_file_location("cache_key", MODULE_PATH)
+SPEC = importlib.util.spec_from_file_location("cache_key", ACTION / "cache_key.py")
 assert SPEC is not None and SPEC.loader is not None
 CACHE_KEY = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(CACHE_KEY)

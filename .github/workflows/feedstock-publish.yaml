@@ -87,23 +87,21 @@ jobs:
         shell: bash
         env:
           API_BASE_URL: ${{ inputs.api-base-url }}
-          BUNDLE: ${{ steps.record.outputs.bundle-path }}
-          VERSIONS: ${{ steps.record.outputs.versions }}
+          BUNDLES: ${{ steps.record.outputs.bundles }}
           # The CLI reads the credential from the environment,
           # so the token never reaches argv or the process list.
           BOOKSHELF_TOKEN: ${{ steps.token.outputs.token }}
-        # Every version is replayed, because publishing an unchanged book is idempotent
-        # and leaves the edition where it was.
+        # Every bundle is replayed. Publishing an unchanged book is idempotent and leaves the edition where it was.
         run: |
           set -euo pipefail
-          summary="[]"
+          results="$(mktemp)"
           echo "## Publish outcome" >> "${GITHUB_STEP_SUMMARY}"
           echo >> "${GITHUB_STEP_SUMMARY}"
-          for version in ${VERSIONS}; do
-            result="$(uv run bookshelf publish "${BUNDLE}/${version}" \
+          for bundle in ${BUNDLES}; do
+            result="$(uv run bookshelf publish "${bundle}" \
               --api-url "${API_BASE_URL}" \
               --json)"
-            summary="$(jq -c --argjson result "${result}" '. + [$result]' <<<"${summary}")"
+            printf '%s\n' "${result}" >> "${results}"
             echo "* \`${result}\`" >> "${GITHUB_STEP_SUMMARY}"
           done
-          echo "outcome=${summary}" >> "${GITHUB_OUTPUT}"
+          echo "outcome=$(jq -sc . "${results}")" >> "${GITHUB_OUTPUT}"

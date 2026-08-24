@@ -1,9 +1,7 @@
 """Public contract tests for the colocated Bookshelf feedstock actions."""
 
-from pathlib import Path
+from conftest import ACTION, ROOT
 
-ROOT = Path(__file__).parents[1]
-ACTION = ROOT / "actions" / "record-bundle"
 WORKFLOWS = ROOT / ".github" / "workflows"
 
 
@@ -38,8 +36,35 @@ def test_the_composite_action_records_every_version_by_default() -> None:
     action = (ACTION / "action.yml").read_text()
 
     assert "for version in ${VERSIONS}; do" in action
-    assert '--bundle "${BUNDLE}/${version}"' in action
+    assert 'bundle="${BUNDLE}/${version}"' in action
     assert '--version "${version}"' in action
+
+
+def test_the_composite_action_reports_the_bundle_directories_it_wrote() -> None:
+    """A caller replays the paths it was given rather than joining them itself."""
+    action = (ACTION / "action.yml").read_text()
+
+    assert "bundles:" in action
+    assert 'echo "bundles=${bundles}" >> "${GITHUB_OUTPUT}"' in action
+
+
+def test_the_composite_action_takes_the_build_file_from_the_recipe() -> None:
+    """`build: notebook:` is the one place the build file is written down.
+
+    A second default here could disagree with what `make run` executes locally.
+    """
+    action = (ACTION / "action.yml").read_text()
+
+    assert "build-file" not in action
+    assert "uv run bookshelf record \\\n" in action
+
+
+def test_the_composite_action_caches_where_the_sdk_fetches_into() -> None:
+    """The SDK caches under a platform directory that no runner keeps between jobs."""
+    action = (ACTION / "action.yml").read_text()
+
+    assert "BOOKSHELF_CACHE_DIR: .cache" in action
+    assert "path: .cache" in action
 
 
 def test_ci_reusable_workflow_is_credential_free_and_call_only() -> None:
@@ -71,8 +96,8 @@ def test_publish_reusable_workflow_uses_deploy_environment_secrets() -> None:
     assert "environment: deploy" in workflow
     assert "grant_type=client_credentials" in workflow
     assert "./.copier-bookshelf-dataset/actions/record-bundle" in workflow
-    assert 'uv run bookshelf publish "${BUNDLE}/${version}"' in workflow
-    assert "for version in ${VERSIONS}; do" in workflow
+    assert 'uv run bookshelf publish "${bundle}"' in workflow
+    assert "for bundle in ${BUNDLES}; do" in workflow
     assert "Publish outcome" in workflow
 
     # The credential reaches the CLI through the environment.

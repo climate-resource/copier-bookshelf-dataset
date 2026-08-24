@@ -5,6 +5,7 @@ See https://docs.pytest.org/en/7.1.x/reference/fixtures.html#conftest-py-sharing
 """
 
 from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +13,12 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).parents[1]
+ACTION = ROOT / "actions" / "record-bundle"
 CTT_DIR = Path(__file__).parent / "regression" / "ctt"
+
+# The version the generated recipe declares, and the bundle directory it lands in.
+VERSION = "v0.1.0"
+BUNDLE = f"bundle/{VERSION}"
 
 COPIER = yaml.safe_load((ROOT / "copier.yaml").read_text())
 
@@ -43,15 +49,14 @@ class Feedstock:
         """Return the text of a generated file."""
         return (self.path / relative).read_text()
 
+    @cached_property
     def recipe(self) -> dict[str, Any]:
-        """Return the parsed record recipe."""
+        """The parsed record recipe."""
         return yaml.safe_load(self.read("bookshelf.yaml"))
 
     def book(self, version: str) -> dict[str, Any]:
         """Return the book the recipe declares for a version."""
-        return next(
-            book for book in self.recipe()["books"] if book["version"] == version
-        )
+        return next(book for book in self.recipe["books"] if book["version"] == version)
 
     def shipped(self) -> list[str]:
         """Return the generated paths, relative and sorted, without build products."""

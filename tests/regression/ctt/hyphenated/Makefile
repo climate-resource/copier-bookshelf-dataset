@@ -5,7 +5,7 @@
 # A bundle holds one book, so the version selects both what is recorded and where it lands.
 # CI records every version the recipe declares. Locally you pick one.
 VERSION ?= v0.1.0
-BUNDLE ?= bundle/$(VERSION)
+BUNDLE := bundle/$(VERSION)
 
 # A helper script to get short descriptions of each target in the Makefile
 define PRINT_HELP_PYSCRIPT

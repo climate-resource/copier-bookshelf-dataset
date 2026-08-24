@@ -12,50 +12,52 @@ the whole session and the tests read the manifest that came out.
 import os
 import shutil
 import subprocess
+from pathlib import Path
 from typing import Any
 
 import pytest
 import yaml
-from conftest import FEEDSTOCKS, Feedstock
-
-# The version the generated recipe declares, and the bundle directory it lands in.
-VERSION = "v0.1.0"
-BUNDLE = f"bundle/{VERSION}"
+from conftest import BUNDLE, FEEDSTOCKS, VERSION, Feedstock
 
 # The recorder adds these itself, so they are not what the build file registered.
 DOCUMENTS = frozenset({"build.ipynb", "build.html"})
 
+# uv resolves against an active environment, so this repository's own venv is dropped
+# rather than inherited by a generated feedstock.
+ENV = {name: value for name, value in os.environ.items() if name != "VIRTUAL_ENV"}
 
-def setup_venv(feedstock: Feedstock, env):
+# Syncing is slow and idempotent, so a feedstock is synced once for the whole session.
+SYNCED: set[Path] = set()
+
+
+def setup_venv(feedstock: Feedstock):
     if not (feedstock.path / "uv.lock").exists():
         pytest.skip("the generated feedstock has no lock file to sync against")
 
-    try:
-        del env["VIRTUAL_ENV"]
-    except KeyError:
-        pass
+    if feedstock.path in SYNCED:
+        return
 
     subprocess.run(
-        ("make", "virtual-environment"), cwd=feedstock.path, env=env, check=True
+        ("make", "virtual-environment"), cwd=feedstock.path, env=ENV, check=True
     )
 
     lock_file = feedstock.path / "uv.lock"
     assert lock_file.exists()
+    SYNCED.add(feedstock.path)
 
 
 @pytest.fixture(scope="session")
 def recorded() -> dict[str, dict[str, Any]]:
     """Record every generated feedstock and return the bundle manifests."""
-    env = os.environ
     manifests = {}
 
     for feedstock in FEEDSTOCKS:
-        setup_venv(feedstock, env)
+        setup_venv(feedstock)
 
         bundle_dir = feedstock.path / "bundle"
         shutil.rmtree(bundle_dir, ignore_errors=True)
 
-        subprocess.run(("make", "run"), cwd=feedstock.path, env=env, check=True)
+        subprocess.run(("make", "run"), cwd=feedstock.path, env=ENV, check=True)
 
         manifest = feedstock.path / BUNDLE / "manifest.lock"
         assert manifest.exists()
@@ -78,8 +80,7 @@ def registered(manifest: dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 
 def test_towncrier_draft(feedstock: Feedstock):
-    env = os.environ
-    setup_venv(feedstock, env)
+    setup_venv(feedstock)
 
     res = subprocess.run(
         (
@@ -91,7 +92,7 @@ def test_towncrier_draft(feedstock: Feedstock):
             "0.2.0",
         ),
         cwd=feedstock.path,
-        env=env,
+        env=ENV,
         stdout=subprocess.PIPE,
         check=True,
     )

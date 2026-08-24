@@ -6,10 +6,6 @@ inputs:
     description: "Python version used to run the feedstock"
     required: false
     default: "3.12"
-  build-file:
-    description: "Standalone Jupytext build file"
-    required: false
-    default: "build.py"
   recipe:
     description: "Sectioned Bookshelf recipe"
     required: false
@@ -22,18 +18,11 @@ inputs:
     description: "Single version to record. Records every version the recipe declares when left empty."
     required: false
     default: ""
-  cache-path:
-    description: "Raw input cache directory"
-    required: false
-    default: ".cache"
 
 outputs:
-  bundle-path:
-    description: "Directory holding one bundle per recorded version"
-    value: ${{ inputs.bundle }}
-  versions:
-    description: "Space separated versions that were recorded, each a directory under bundle-path"
-    value: ${{ steps.versions.outputs.versions }}
+  bundles:
+    description: "Space separated bundle directories, one per recorded version"
+    value: ${{ steps.record.outputs.bundles }}
 
 runs:
   using: "composite"
@@ -44,19 +33,19 @@ runs:
         python-version: ${{ inputs.python-version }}
         enable-cache: "true"
 
-    - name: Derive raw input cache key
+    - name: Derive fetched input cache key
       id: raw-cache-key
       shell: bash
       env:
         RECIPE: ${{ inputs.recipe }}
       run: python3 "${GITHUB_ACTION_PATH}/cache_key.py" "${RECIPE}"
 
-    - name: Restore raw inputs
+    - name: Restore fetched inputs
       if: steps.raw-cache-key.outputs.found == 'true'
       uses: actions/cache@v6
       with:
-        path: ${{ inputs.cache-path }}
-        key: bookshelf-raw-${{ runner.os }}-${{ steps.raw-cache-key.outputs.key }}
+        path: .cache
+        key: bookshelf-content-${{ runner.os }}-${{ steps.raw-cache-key.outputs.key }}
 
     - name: Install locked feedstock environment
       shell: bash
@@ -70,33 +59,36 @@ runs:
         VERSION: ${{ inputs.version }}
       # The recipe is the one place versions are written down, so an empty input
       # means every book rather than a list repeated in the caller workflow.
-      run: |
-        set -euo pipefail
-        if [[ -n "${VERSION}" ]]; then
-          echo "versions=${VERSION}" >> "${GITHUB_OUTPUT}"
-        else
-          uv run python "${GITHUB_ACTION_PATH}/recipe_versions.py" "${RECIPE}"
-        fi
+      run: uv run python "${GITHUB_ACTION_PATH}/recipe_versions.py" "${RECIPE}"
 
     - name: Record and validate every version
+      id: record
       shell: bash
       env:
-        BUILD_FILE: ${{ inputs.build-file }}
         RECIPE: ${{ inputs.recipe }}
         BUNDLE: ${{ inputs.bundle }}
         VERSIONS: ${{ steps.versions.outputs.versions }}
-      # This step owns the bundle directory in CI, so it replaces whatever is there.
+        # The SDK caches fetched content under its platform directory by default,
+        # which no runner keeps between jobs.
+        BOOKSHELF_CACHE_DIR: .cache
+      # This step lays the bundle directories out, so it reports them rather than leaving
+      # a caller to join a bundle root and a version itself.
+      # It also owns the bundle directory in CI, so it replaces whatever is there.
       # A bare `bookshelf record` refuses to, which is what protects a local bundle under review.
       run: |
         set -euo pipefail
+        bundles=""
         for version in ${VERSIONS}; do
+          bundle="${BUNDLE}/${version}"
           echo "::group::${version}"
-          uv run bookshelf record "${BUILD_FILE}" \
+          uv run bookshelf record \
             --recipe "${RECIPE}" \
-            --bundle "${BUNDLE}/${version}" \
+            --bundle "${bundle}" \
             --version "${version}" \
             --force \
             --json
-          uv run bookshelf validate "${BUNDLE}/${version}" --json
+          uv run bookshelf validate "${bundle}" --json
           echo "::endgroup::"
+          bundles="${bundles}${bundles:+ }${bundle}"
         done
+        echo "bundles=${bundles}" >> "${GITHUB_OUTPUT}"
