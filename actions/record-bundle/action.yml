@@ -1,5 +1,5 @@
 name: "Record Bookshelf bundle"
-description: "Record and validate a feedstock bundle without API credentials"
+description: "Record and validate a feedstock's books without API credentials"
 
 inputs:
   python-version:
@@ -11,13 +11,17 @@ inputs:
     required: false
     default: "build.py"
   recipe:
-    description: "Slim Bookshelf recipe"
+    description: "Sectioned Bookshelf recipe"
     required: false
     default: "bookshelf.yaml"
   bundle:
-    description: "Output bundle directory"
+    description: "Directory the per-version bundles are written under"
     required: false
     default: "bundle"
+  version:
+    description: "Single version to record. Records every version the recipe declares when left empty."
+    required: false
+    default: ""
   cache-path:
     description: "Raw input cache directory"
     required: false
@@ -25,8 +29,11 @@ inputs:
 
 outputs:
   bundle-path:
-    description: "Recorded bundle directory"
+    description: "Directory holding one bundle per recorded version"
     value: ${{ inputs.bundle }}
+  versions:
+    description: "Space separated versions that were recorded, each a directory under bundle-path"
+    value: ${{ steps.versions.outputs.versions }}
 
 runs:
   using: "composite"
@@ -41,8 +48,8 @@ runs:
       id: raw-cache-key
       shell: bash
       env:
-        BUILD_FILE: ${{ inputs.build-file }}
-      run: python3 "${GITHUB_ACTION_PATH}/cache_key.py" "${BUILD_FILE}"
+        RECIPE: ${{ inputs.recipe }}
+      run: python3 "${GITHUB_ACTION_PATH}/cache_key.py" "${RECIPE}"
 
     - name: Restore raw inputs
       if: steps.raw-cache-key.outputs.found == 'true'
@@ -55,24 +62,41 @@ runs:
       shell: bash
       run: uv sync --locked
 
-    - name: Record bundle
+    - name: Resolve the versions to record
+      id: versions
+      shell: bash
+      env:
+        RECIPE: ${{ inputs.recipe }}
+        VERSION: ${{ inputs.version }}
+      # The recipe is the one place versions are written down, so an empty input
+      # means every book rather than a list repeated in the caller workflow.
+      run: |
+        set -euo pipefail
+        if [[ -n "${VERSION}" ]]; then
+          echo "versions=${VERSION}" >> "${GITHUB_OUTPUT}"
+        else
+          uv run python "${GITHUB_ACTION_PATH}/recipe_versions.py" "${RECIPE}"
+        fi
+
+    - name: Record and validate every version
       shell: bash
       env:
         BUILD_FILE: ${{ inputs.build-file }}
         RECIPE: ${{ inputs.recipe }}
         BUNDLE: ${{ inputs.bundle }}
+        VERSIONS: ${{ steps.versions.outputs.versions }}
       # This step owns the bundle directory in CI, so it replaces whatever is there.
       # A bare `bookshelf record` refuses to, which is what protects a local bundle under review.
-      run: >-
-        uv run bookshelf record "${BUILD_FILE}"
-        --recipe "${RECIPE}"
-        --bundle "${BUNDLE}"
-        --force
-        --json
-
-    - name: Validate bundle
-      shell: bash
-      env:
-        BUNDLE: ${{ inputs.bundle }}
-      # The same validation a feedstock runs locally through `make run`.
-      run: uv run bookshelf validate "${BUNDLE}" --json
+      run: |
+        set -euo pipefail
+        for version in ${VERSIONS}; do
+          echo "::group::${version}"
+          uv run bookshelf record "${BUILD_FILE}" \
+            --recipe "${RECIPE}" \
+            --bundle "${BUNDLE}/${version}" \
+            --version "${version}" \
+            --force \
+            --json
+          uv run bookshelf validate "${BUNDLE}/${version}" --json
+          echo "::endgroup::"
+        done

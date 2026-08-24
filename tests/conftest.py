@@ -4,7 +4,6 @@ Re-useable fixtures etc. for tests
 See https://docs.pytest.org/en/7.1.x/reference/fixtures.html#conftest-py-sharing-fixtures-across-multiple-files
 """
 
-import ast
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -44,17 +43,15 @@ class Feedstock:
         """Return the text of a generated file."""
         return (self.path / relative).read_text()
 
-    def build_assignments(self, *names: str) -> dict[str, Any]:
-        """Evaluate the named module level literal assignments in the build file."""
-        tree = ast.parse(self.read("build.py"))
-        return {
-            node.targets[0].id: ast.literal_eval(node.value)
-            for node in tree.body
-            if isinstance(node, ast.Assign)
-            and len(node.targets) == 1
-            and isinstance(node.targets[0], ast.Name)
-            and node.targets[0].id in names
-        }
+    def recipe(self) -> dict[str, Any]:
+        """Return the parsed record recipe."""
+        return yaml.safe_load(self.read("bookshelf.yaml"))
+
+    def book(self, version: str) -> dict[str, Any]:
+        """Return the book the recipe declares for a version."""
+        return next(
+            book for book in self.recipe()["books"] if book["version"] == version
+        )
 
     def shipped(self) -> list[str]:
         """Return the generated paths, relative and sorted, without build products."""

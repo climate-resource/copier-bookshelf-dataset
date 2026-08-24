@@ -18,15 +18,28 @@ def test_record_bundle_composite_owns_the_offline_build_path() -> None:
     assert "uv run bookshelf record" in action
     assert "uv run bookshelf validate" in action
     assert 'python3 "${GITHUB_ACTION_PATH}/cache_key.py"' in action
+    assert 'uv run python "${GITHUB_ACTION_PATH}/recipe_versions.py"' in action
 
 
-def test_the_composite_action_ships_only_the_cache_key_helper() -> None:
+def test_the_composite_action_ships_only_its_recipe_helpers() -> None:
     """The CLI owns record and validate, so no bundle script sits beside it.
 
-    cache_key.py stays because it AST-parses the build file for declared input
-    hashes, which is a CI concern rather than an SDK one.
+    The two helpers stay because both read the recipe for a CI concern:
+    what to key the input cache on, and which versions to record.
     """
-    assert [path.name for path in ACTION.glob("*.py")] == ["cache_key.py"]
+    assert sorted(path.name for path in ACTION.glob("*.py")) == [
+        "cache_key.py",
+        "recipe_versions.py",
+    ]
+
+
+def test_the_composite_action_records_every_version_by_default() -> None:
+    """The recipe is the one place versions are written down."""
+    action = (ACTION / "action.yml").read_text()
+
+    assert "for version in ${VERSIONS}; do" in action
+    assert '--bundle "${BUNDLE}/${version}"' in action
+    assert '--version "${version}"' in action
 
 
 def test_ci_reusable_workflow_is_credential_free_and_call_only() -> None:
@@ -58,7 +71,8 @@ def test_publish_reusable_workflow_uses_deploy_environment_secrets() -> None:
     assert "environment: deploy" in workflow
     assert "grant_type=client_credentials" in workflow
     assert "./.copier-bookshelf-dataset/actions/record-bundle" in workflow
-    assert "uv run bookshelf publish bundle" in workflow
+    assert 'uv run bookshelf publish "${BUNDLE}/${version}"' in workflow
+    assert "for version in ${VERSIONS}; do" in workflow
     assert "Publish outcome" in workflow
 
     # The credential reaches the CLI through the environment.

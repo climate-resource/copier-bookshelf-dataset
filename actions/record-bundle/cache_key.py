@@ -1,25 +1,23 @@
-"""Derive a stable cache key from declared raw input content hashes."""
+"""Derive a stable cache key from the input digests a recipe declares."""
 
-import ast
 import hashlib
 import os
 import re
 import sys
 from pathlib import Path
 
-SHA256 = re.compile(r"^sha256:[0-9a-f]{64}$")
+# The recipe is read line by line rather than parsed, because this step runs before
+# `uv sync` and the runner's python has no YAML parser.
+SHA256 = re.compile(r'^\s*sha256:\s*"?([0-9a-f]{64})"?\s*$')
 
 
-def declared_hashes(build_file: Path) -> list[str]:
-    """Return unique canonical SHA256 literals declared in a build file."""
-    tree = ast.parse(build_file.read_text(), filename=str(build_file))
+def declared_hashes(recipe_file: Path) -> list[str]:
+    """Return the unique canonical SHA256 digests a recipe declares, sorted."""
     return sorted(
         {
-            node.value
-            for node in ast.walk(tree)
-            if isinstance(node, ast.Constant)
-            and isinstance(node.value, str)
-            and SHA256.fullmatch(node.value)
+            match.group(1)
+            for line in recipe_file.read_text().splitlines()
+            if (match := SHA256.match(line))
         }
     )
 

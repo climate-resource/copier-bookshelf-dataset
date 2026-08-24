@@ -13,27 +13,62 @@ Install the local virtual environment:
    make virtual-environment
 ```
 
-The slim record recipe is in `bookshelf.yaml`.
-The source code that builds the book is in `build.py`.
+Two files describe the feedstock.
 
-The book can be recorded using `make run`.
-This creates a validated local bundle in `bundle/` without API credentials.
+- `bookshelf.yaml` is the recipe.
+  `volume:` names the collection and its search vocabulary,
+  `defaults:` holds what every book shares,
+  and `books:` lists one entry per upstream version with its licence, its discovery metadata
+  and the inputs it reads.
+- `build.py` is a standalone Jupytext build file holding only the processing.
+  It calls `bookshelf.setup()` once, reads each declared input through `build.use(...)`,
+  and writes its outputs with `build.book.write(..., used=[...])`.
 
-The bundle can be replayed to the Bookshelf API using `make publish`.
-The publish workflow normally performs that step on a release.
-Run `make publish-dry-run` first to see which edition the bundle resolves to without publishing.
+The scaffold ships a working example of both: one checked-in input under `inputs/`,
+doubled and written out as a single timeseries.
+Replace them rather than starting from nothing.
+
+### Recording a book
+
+A bundle holds one book, so a version selects both what is recorded and where it lands:
+
+```bash
+   make run VERSION=v0.1.0
+```
+
+That records and validates `bundle/v0.1.0` without any API credentials.
+Replay it to the Bookshelf API with `make publish VERSION=v0.1.0`,
+and see which edition it would resolve to first with `make publish-dry-run VERSION=v0.1.0`.
 
 Both targets and the CI workflows call the `bookshelf` CLI directly,
 so this repository carries no publishing scripts of its own.
-The same three commands are available by hand:
+The same commands are available by hand:
 
 ```bash
-   uv run bookshelf record --force
-   uv run bookshelf validate
-   uv run bookshelf publish --dry-run
+   uv run bookshelf record --force --version v0.1.0 --bundle bundle/v0.1.0
+   uv run bookshelf validate bundle/v0.1.0
+   uv run bookshelf publish bundle/v0.1.0 --dry-run
 ```
 
 Each takes `--json` for a machine readable summary, and carries its meaning in the exit code.
+
+CI records every version `books:` declares, and the publish workflow replays every one of them.
+Publishing an unchanged book is idempotent, so a version that has not moved keeps its edition.
+
+### Worked examples
+
+The SDK ships a set of miniature feedstocks, each proving one thing, with the bundle it
+should produce checked in beside it:
+[climate-resource/bookshelf/examples](https://github.com/climate-resource/bookshelf/tree/feat/adopt-bookshelf-sdk/examples).
+
+Reach for `fetch-from-web` when the input moves to an upstream URL,
+`multi-version` when a second version arrives,
+`complex-processing` for several outputs and a real `used=` graph,
+and `mixed-visibility` for a public book carrying one embargoed resource.
+The [recipe format](https://github.com/climate-resource/bookshelf/blob/feat/adopt-bookshelf-sdk/docs/explanation/recipe-format.md)
+documents every field.
+
+## Publishing
 
 Publishing uses the repository environment named `deploy`.
 Configure `BOOKSHELF_CLIENT_ID` and `BOOKSHELF_CLIENT_SECRET` as environment secrets on that environment.
@@ -43,13 +78,14 @@ The reusable publish job carries `environment: deploy`, so those environment sec
 
 `visibility` in `bookshelf.yaml` sets the tier of the book and of everything the build records,
 the `build.ipynb` and `build.html` documents included.
-Pass `visibility=` on a single `activity.register(...)` call to narrow that one resource,
+Pass `visibility=` on a single `build.book.write(...)` call to narrow that one resource,
 so a public book can still hold a member only your organisation may read.
 
-Identical inputs must create identical data bytes and stable lineage identifiers.
-Change the hardcoded `version` in `build.py` when publishing a new data version.
+A `path:` input is catalogued as a pointer at that repository relative path.
+The platform never re-hosts it, so once the real upstream data is in place,
+move the resource to a `uri:` with the `sha256:` the fetch is checked against.
 
-The recorded bundle also carries the executed script/notebook, so its bundle hash covers the build source.
+The recorded bundle also carries the executed script and notebook, so its bundle hash covers the build source.
 Any edit to `build.py`, a comment included, produces a new bundle hash.
 Publishing after a source-only edit therefore creates a new edition whose data is unchanged.
 The underlying resources are deduplicated if they don't change.

@@ -24,22 +24,23 @@ def test_generated_toml_parses(feedstock: Feedstock, name: str) -> None:
     assert tomllib.loads(feedstock.read(name))
 
 
-def test_generated_recipe_parses_and_round_trips_the_authors(
+def test_generated_recipe_parses_and_round_trips_the_answers(
     feedstock: Feedstock,
 ) -> None:
-    """The recipe carries the author exactly as answered."""
+    """The recipe carries the answers exactly as they were given."""
     recipe = yaml.safe_load(feedstock.read("bookshelf.yaml"))
+    maintainer = {
+        "name": feedstock.answers["author"],
+        "email": feedstock.answers["author_email"],
+    }
 
-    assert recipe["collection"] == feedstock.answers["dataset_name"]
-    assert recipe["license"] == "MIT"
-    assert recipe["visibility"] == "public"
-    assert recipe["notebook"] == "build.py"
-    assert recipe["authors"] == [
-        {
-            "name": feedstock.answers["author"],
-            "email": feedstock.answers["author_email"],
-        }
-    ]
+    assert recipe["volume"]["name"] == feedstock.answers["dataset_name"]
+    assert recipe["volume"]["maintainers"] == [maintainer]
+    assert recipe["defaults"]["title"] == feedstock.answers["dataset_name_human"]
+    assert recipe["defaults"]["description"] == feedstock.answers["dataset_description"]
+    assert recipe["defaults"]["repository_url"] == feedstock.answers["project_url"]
+    assert recipe["defaults"]["authors"] == [maintainer]
+    assert recipe["build"]["notebook"] == "build.py"
 
 
 def test_generated_workflows_parse(feedstock: Feedstock) -> None:

@@ -2,98 +2,41 @@
 # # Example Dataset
 #
 # Test project made with copier-template-tester
-
-# %% tags=["parameters"]
-version = "v0.1.0"
-input_sha256 = "sha256:0989f49d0c9f6f9435eb94490250dff3d001c0efb6c3e12c936b81731d8546d2"
+#
+# The recipe in `bookshelf.yaml` names the version, the licence, the discovery metadata
+# and the inputs, so this file holds only the processing.
 
 # %%
-import hashlib
-from pathlib import Path
-from uuid import NAMESPACE_URL, uuid5
-
 import bookshelf
 import pandas as pd
 
-# Stable identifiers keep identical builds byte deterministic.
-resource_namespace = "https://github.com/climate-resource/ctt-project"
-raw_tracking_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/raw/{version}")
-output_tracking_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/data/{version}")
-build_activity_id = uuid5(NAMESPACE_URL, f"{resource_namespace}/build/{version}")
+# %%
+build = bookshelf.setup()
 
 # %% [markdown]
 # # Fetch
 #
-# Replace this small cached example with a hash verified upstream input.
+# `build.use` resolves the name the recipe declares, hashes the bytes and registers
+# them as an input of this build.
+
 # %%
-# The dataset column keeps this example distinct from every other generated feedstock.
-# Registration deduplicates on content, so identical example bytes would alias
-# onto whichever feedstock published them first and could not then be attached.
-input_content = (
-    b"region,dataset,year,value\n"
-    b"World,example,2020,1.0\n"
-    b"World,example,2021,2.0\n"
-    b"World,example,2022,3.0\n"
-)
-
-
-class InputHashMismatchError(ValueError):
-    """Raised when cached input bytes do not match their declared hash."""
-
-    def __init__(self, path: Path, actual: str, expected: str) -> None:
-        super().__init__(
-            f"{path} hashes to {actual}, but this build declares {expected}. "
-            "Update input_sha256 to accept the new bytes, "
-            "or delete the cached file to fetch the input again."
-        )
-
-
-def fetch_input(expected_sha256: str) -> Path:
-    """Cache the example input and verify its declared content hash."""
-    cache = Path(".cache") / "example.csv"
-    cache.parent.mkdir(parents=True, exist_ok=True)
-    if not cache.exists():
-        cache.write_bytes(input_content)
-
-    actual = f"sha256:{hashlib.sha256(cache.read_bytes()).hexdigest()}"
-    if actual != expected_sha256:
-        raise InputHashMismatchError(cache, actual, expected_sha256)
-    return cache
-
-
-raw_path = fetch_input(input_sha256)
-raw_data = pd.read_csv(raw_path)
+raw = build.use("raw")
+raw_data = pd.read_csv(raw.path)
+raw_data.head()
 
 # %% [markdown]
 # # Process
+#
+# Replace this with the real transform.
 
 # %%
 processed_data = raw_data.assign(value=raw_data["value"] * 2)
 
+# %% [markdown]
+# # Publish
+#
+# `used=[raw]` is what records the lineage edge from the input to this output.
+
 # %%
-# The collection, licence, visibility and authors come from bookshelf.yaml.
-# This file is executed by the recorder, so it does not construct a client itself.
-client, draft = bookshelf.setup(version=version)
-
-# A recorded build carries exactly one activity block.
-with client.activity(
-    kind="build",
-    config={"version": version},
-    activity_id=build_activity_id,
-) as activity:
-    raw = activity.register(
-        raw_data,
-        type="tabular",
-        logical_key=f"example/raw-{version}",
-        tracking_id=raw_tracking_id,
-    )
-    data = activity.register(
-        processed_data,
-        type="timeseries",
-        logical_key=f"example/data-{version}",
-        used=[raw.tracking_id],
-        tracking_id=output_tracking_id,
-    )
-
-draft.attach(data, name_in_book="data")
-draft.publish()
+build.book.write("data", processed_data, type="timeseries", used=[raw])
+build.book.publish()

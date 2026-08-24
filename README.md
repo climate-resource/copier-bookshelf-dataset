@@ -35,7 +35,46 @@ It will ask you lots of questions about the dataset you want to create.
 Once you have created your repository, there are then a number of further
 steps which have to be done to get everything running as intended.
 
+## What the template scaffolds
+
+A generated feedstock is a working feedstock, not a blank slate.
+It ships a recipe declaring one book, a checked-in example input under `inputs/`,
+and a `build.py` that reads it, processes it and writes one timeseries.
+`make run` records and validates it offline, before a line of real code is written.
+
+## Worked examples
+
+The SDK ships a set of miniature feedstocks, each proving one thing, with the bundle it
+should produce checked in beside it:
+[climate-resource/bookshelf/examples](https://github.com/climate-resource/bookshelf/tree/feat/adopt-bookshelf-sdk/examples).
+
+The scaffold is closest to `checked-in-data`.
+The others are what a feedstock grows into:
+
+| Example                 | What it proves                                                    |
+| ----------------------- | ----------------------------------------------------------------- |
+| `simple`                | The smallest legal recipe, with no inputs and no network.          |
+| `checked-in-data`       | A resource addressed by `path:`, hashed by the recorder.           |
+| `fetch-from-web`        | One upstream url, digest verified and cached.                      |
+| `multi-version`         | One recipe, several upstream versions, selected by `--version`.    |
+| `complex-processing`    | Several outputs and a real `used=` graph across steps.             |
+| `defaults-and-overrides`| Inheriting from `defaults:`, then overriding some.                 |
+| `mixed-visibility`      | A public book carrying one hidden resource.                        |
+| `figures`               | A png attached as a document entry.                                |
+| `reissue`               | Same version, changed processing.                                  |
+| `low-level-api`         | A plain script that records for itself, with no recipe.            |
+
+The [recipe format](https://github.com/climate-resource/bookshelf/blob/feat/adopt-bookshelf-sdk/docs/explanation/recipe-format.md)
+documents every field a recipe can carry.
+Until the SDK is released the template pins it to the `feat/adopt-bookshelf-sdk` branch,
+so a generated feedstock and these examples are always the same code.
+
 ## Feedstock automation
+
+A bundle holds one book, so each version is recorded into its own `bundle/<version>` directory.
+CI records every version the recipe declares, and the publish workflow replays every one of them.
+Publishing an unchanged book is idempotent, so a version that has not moved keeps its edition.
+Pass a `version` input to either reusable workflow to narrow that to one book.
 
 This public repository hosts the reusable feedstock workflows in `.github/workflows/feedstock-ci.yaml` and `.github/workflows/feedstock-publish.yaml`.
 Their composite action lives in `actions/record-bundle`.

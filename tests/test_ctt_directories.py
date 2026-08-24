@@ -13,14 +13,17 @@ import os
 import shutil
 import subprocess
 from typing import Any
-from uuid import NAMESPACE_URL, uuid5
 
 import pytest
 import yaml
 from conftest import FEEDSTOCKS, Feedstock
 
-# The version the generated build file declares.
+# The version the generated recipe declares, and the bundle directory it lands in.
 VERSION = "v0.1.0"
+BUNDLE = f"bundle/{VERSION}"
+
+# The recorder adds these itself, so they are not what the build file registered.
+DOCUMENTS = frozenset({"build.ipynb", "build.html"})
 
 
 def setup_venv(feedstock: Feedstock, env):
@@ -54,24 +57,23 @@ def recorded() -> dict[str, dict[str, Any]]:
 
         subprocess.run(("make", "run"), cwd=feedstock.path, env=env, check=True)
 
-        assert bundle_dir.exists()
-        manifests[feedstock.name] = yaml.safe_load(
-            (bundle_dir / "manifest.lock").read_text()
-        )
+        manifest = feedstock.path / BUNDLE / "manifest.lock"
+        assert manifest.exists()
+        manifests[feedstock.name] = yaml.safe_load(manifest.read_text())
 
     return manifests
 
 
 def registered(manifest: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    """Return the resources the build file registered, keyed by logical key.
+    """Return the resources the build file registered, keyed by name.
 
     The recorder adds the executed notebook and its rendering, which the build file
     does not register and does not name.
     """
     return {
-        resource["logical_key"]: resource
+        resource["name"]: resource
         for resource in manifest["resources"]
-        if not resource["logical_key"].startswith("document/")
+        if resource["name"] not in DOCUMENTS
     }
 
 
@@ -102,11 +104,11 @@ def test_run(feedstock: Feedstock, recorded: dict[str, dict[str, Any]]):
     """Recording produces a bundle whose book is the one the recipe describes."""
     book = recorded[feedstock.name]["book"]
 
-    assert (feedstock.path / "bundle").exists()
+    assert (feedstock.path / BUNDLE).exists()
     assert book["volume"] == feedstock.answers["dataset_name"]
     assert book["version"] == VERSION
     assert book["visibility"] == "public"
-    assert book["license"] == "MIT"
+    assert book["license"] == "CC-BY-4.0"
     assert book["authors"] == [
         {
             "name": feedstock.answers["author"],
@@ -115,59 +117,51 @@ def test_run(feedstock: Feedstock, recorded: dict[str, dict[str, Any]]):
     ]
 
 
+def test_recorded_book_carries_the_resolved_discovery_metadata(
+    feedstock: Feedstock, recorded: dict[str, dict[str, Any]]
+):
+    """`defaults:` is merged onto the book before it is recorded."""
+    book = recorded[feedstock.name]["book"]
+
+    assert book["discovery"]["title"] == feedstock.answers["dataset_name_human"]
+    assert book["discovery"]["repository_url"] == feedstock.answers["project_url"]
+    assert book["discovery"]["publisher"] == "Climate Resource"
+
+
 def test_recorded_bundle_attaches_the_processed_resource(
     feedstock: Feedstock, recorded: dict[str, dict[str, Any]]
 ):
-    """The book entry named `data` points at the resource the build file attached."""
+    """The book entry named `data` is the resource the build file wrote."""
     manifest = recorded[feedstock.name]
-    resources = registered(manifest)
-    data = resources[f"{feedstock.answers['dataset_name']}/data-{VERSION}"]
 
-    entries = {entry["name_in_book"]: entry for entry in manifest["book"]["entries"]}
-    assert "data" in entries
-    assert entries["data"]["tracking_id"] == data["tracking_id"]
+    assert "data" in registered(manifest)
+    assert "data" in {entry["name"] for entry in manifest["book"]["entries"]}
 
 
 def test_recorded_bundle_carries_the_declared_provenance(
     feedstock: Feedstock, recorded: dict[str, dict[str, Any]]
 ):
     """Both resources are recorded, and the processed one records what it used."""
-    dataset_name = feedstock.answers["dataset_name"]
     resources = registered(recorded[feedstock.name])
 
-    assert set(resources) == {
-        f"{dataset_name}/raw-{VERSION}",
-        f"{dataset_name}/data-{VERSION}",
-    }
+    assert set(resources) == {"raw", "data"}
 
-    raw = resources[f"{dataset_name}/raw-{VERSION}"]
-    data = resources[f"{dataset_name}/data-{VERSION}"]
+    raw = resources["raw"]
+    data = resources["data"]
 
+    # A checked-in input is catalogued as a pointer at its path, never re-hosted.
+    assert raw["kind"] == "pointer"
+    assert raw["external_uri"] == "inputs/raw.csv"
+    assert raw["generated"] is False
     assert raw["type"] == "tabular"
+    assert data["generated"] is True
     assert data["type"] == "timeseries"
-    assert {used["tracking_id"] for used in data["used"]} == {raw["tracking_id"]}
+    assert data["used"] == ["raw"]
 
     # Processing doubles the values, so the two resources cannot hash the same.
     assert raw["hash"].startswith("sha256:")
     assert data["hash"].startswith("sha256:")
     assert raw["hash"] != data["hash"]
-
-
-def test_recorded_identifiers_are_derived_from_the_project_url(
-    feedstock: Feedstock, recorded: dict[str, dict[str, Any]]
-):
-    """The build file names its resources, so re-recording keeps the same ids."""
-    dataset_name = feedstock.answers["dataset_name"]
-    namespace = feedstock.answers["project_url"]
-    manifest = recorded[feedstock.name]
-    resources = registered(manifest)
-
-    def derived(kind: str) -> str:
-        return str(uuid5(NAMESPACE_URL, f"{namespace}/{kind}/{VERSION}"))
-
-    assert resources[f"{dataset_name}/raw-{VERSION}"]["tracking_id"] == derived("raw")
-    assert resources[f"{dataset_name}/data-{VERSION}"]["tracking_id"] == derived("data")
-    assert manifest["activity"]["activity_id"] == derived("build")
 
 
 def test_recorded_resources_never_collide_between_feedstocks(
@@ -184,11 +178,5 @@ def test_recorded_resources_never_collide_between_feedstocks(
         for manifest in recorded.values()
         for resource in registered(manifest).values()
     ]
-    tracking_ids = [
-        resource["tracking_id"]
-        for manifest in recorded.values()
-        for resource in registered(manifest).values()
-    ]
 
     assert len(set(hashes)) == len(hashes)
-    assert len(set(tracking_ids)) == len(tracking_ids)
