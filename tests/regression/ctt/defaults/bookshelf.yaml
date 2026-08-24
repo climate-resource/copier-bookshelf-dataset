@@ -1,5 +1,4 @@
-# The recipe carries every fact about the books this feedstock produces,
-# so build.py holds only the processing.
+# The recipe carries every fact about the books this feedstock produces.
 # Format: https://github.com/climate-resource/bookshelf/blob/feat/adopt-bookshelf-sdk/docs/explanation/recipe-format.md
 volume:
   name: example
@@ -9,7 +8,8 @@ volume:
   keywords:
     - example
 
-# What every book starts from. A book may override any of it, field by field.
+# Defaults for every book
+# Any overrides for a specific book win
 defaults:
   title: "Example Dataset"
   description: "Test project made with copier-template-tester"
@@ -36,7 +36,7 @@ books:
       The scaffolded example book.
       Replace it with the first real version of Example Dataset.
     resources:
-      # A checked-in input needs no sha256, because the recorder hashes the file it reads.
+      # A checked-in input needs no sha256.
       # Replace it with `uri:` and the `sha256:` the fetch is checked against.
       raw:
         path: inputs/raw.csv

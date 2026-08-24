@@ -13,20 +13,15 @@ Install the local virtual environment:
    make virtual-environment
 ```
 
-Two files describe the feedstock.
+Each dataset consists of two files:
 
-- `bookshelf.yaml` is the recipe.
+- `bookshelf.yaml` is the recipe for the metadata about the dataset.
   `volume:` names the collection and its search vocabulary,
   `defaults:` holds what every book shares,
-  and `books:` lists one entry per upstream version with its licence, its discovery metadata
-  and the inputs it reads.
+  and `books:` lists one entry per upstream version of the dataset.
 - `build.py` is a standalone Jupytext build file holding only the processing.
   It calls `bookshelf.setup()` once, reads each declared input through `build.use(...)`,
   and writes its outputs with `build.book.write(..., used=[...])`.
-
-The scaffold ships a working example of both: one checked-in input under `inputs/`,
-doubled and written out as a single timeseries.
-Replace them rather than starting from nothing.
 
 ### Recording a book
 
@@ -57,15 +52,9 @@ Publishing an unchanged book is idempotent, so a version that has not moved keep
 
 ### Worked examples
 
-The SDK ships a set of miniature feedstocks, each proving one thing, with the bundle it
-should produce checked in beside it:
-[climate-resource/bookshelf/examples](https://github.com/climate-resource/bookshelf/tree/feat/adopt-bookshelf-sdk/examples).
-
-Reach for `fetch-from-web` when the input moves to an upstream URL,
-`multi-version` when a second version arrives,
-`complex-processing` for several outputs and a real `used=` graph,
-and `mixed-visibility` for a public book carrying one embargoed resource.
-The [recipe format](https://github.com/climate-resource/bookshelf/blob/feat/adopt-bookshelf-sdk/docs/explanation/recipe-format.md)
+The SDK's [examples README](https://github.com/climate-resource/bookshelf/blob/main/examples/README.md)
+lists the example feedstocks and explains how to use them.
+The [recipe format](https://github.com/climate-resource/bookshelf/blob/main/docs/explanation/recipe-format.md)
 documents every field.
 
 ## Publishing

@@ -4,7 +4,9 @@
 # Scenario data for O'Brien's review: quoted, apostrophised and colonised.
 #
 # The recipe in `bookshelf.yaml` names the version, the licence, the discovery metadata
-# and the inputs, so this file holds only the processing.
+# and the inputs.
+#
+# This file contains the code that processes the data into a form used by the bookshelf.
 
 # %%
 import bookshelf
@@ -16,8 +18,8 @@ build = bookshelf.setup()
 # %% [markdown]
 # # Fetch
 #
-# `build.use` resolves the name the recipe declares, hashes the bytes and registers
-# them as an input of this build.
+# `build.use` resolves a resource named in the recipe,
+# and registers them as an input of this build.
 
 # %%
 raw = build.use("raw")
@@ -27,7 +29,7 @@ raw_data.head()
 # %% [markdown]
 # # Process
 #
-# Replace this with the real transform.
+# TODO: Replace this with the real transform.
 
 # %%
 processed_data = raw_data.assign(value=raw_data["value"] * 2)
@@ -35,7 +37,6 @@ processed_data = raw_data.assign(value=raw_data["value"] * 2)
 # %% [markdown]
 # # Publish
 #
-# `used=[raw]` is what records the lineage edge from the input to this output.
 
 # %%
 build.book.write("data", processed_data, type="timeseries", used=[raw])
