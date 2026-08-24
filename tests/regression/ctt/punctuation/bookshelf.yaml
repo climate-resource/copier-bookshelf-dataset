@@ -1,7 +1,42 @@
-collection: ngfs-scenarios
-license: MIT
-visibility: public
-authors:
-  - name: "Ren\u00e9e O\u0027Brien"
-    email: renee.obrien@climate-resource.com
-notebook: build.py
+# The recipe carries every fact about the books this feedstock produces.
+# Format: https://github.com/climate-resource/bookshelf/blob/feat/adopt-bookshelf-sdk/docs/explanation/recipe-format.md
+volume:
+  name: ngfs-scenarios
+  maintainers:
+    - name: "Ren\u00e9e O\u0027Brien"
+      email: renee.obrien@climate-resource.com
+  keywords:
+    - ngfs-scenarios
+
+# Defaults for every book
+# Any overrides for a specific book win
+defaults:
+  title: "NGFS \"Net Zero\" Scenarios"
+  description: "Scenario data for O\u0027Brien\u0027s review: quoted, apostrophised and colonised."
+  publisher: Climate Resource
+  repository_url: https://github.com/climate-resource/bookshelf-ngfs-scenarios
+  visibility: public
+  authors:
+    - name: "Ren\u00e9e O\u0027Brien"
+      email: renee.obrien@climate-resource.com
+  resources:
+    # A resource type never moves between books, so it is stated once here.
+    raw:
+      type: tabular
+
+build:
+  notebook: build.py
+
+# One entry per upstream version. `bookshelf record --version` picks one.
+books:
+  - version: "v0.1.0"
+    license: CC-BY-4.0
+    license_url: https://creativecommons.org/licenses/by/4.0/
+    description: >-
+      The scaffolded example book.
+      Replace it with the first real version of NGFS "Net Zero" Scenarios.
+    resources:
+      # A checked-in input needs no sha256.
+      # Replace it with `uri:` and the `sha256:` the fetch is checked against.
+      raw:
+        path: inputs/raw.csv

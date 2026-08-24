@@ -2,6 +2,11 @@
 
 .DEFAULT_GOAL := help
 
+# A bundle holds one book, so the version selects both what is recorded and where it lands.
+# CI records every version the recipe declares. Locally you pick one.
+VERSION ?= v0.1.0
+BUNDLE := bundle/$(VERSION)
+
 # A helper script to get short descriptions of each target in the Makefile
 define PRINT_HELP_PYSCRIPT
 import re, sys
@@ -44,16 +49,16 @@ virtual-environment:  ## update virtual environment, create a new one if it does
 	uv sync
 	uvx pre-commit install
 
-run:  ## Record and validate the book bundle
+run:  ## Record and validate one book, selected with VERSION=vX.Y.Z
     # --force because rebuilding is the point of this target.
     # A bare `bookshelf record` refuses to replace a bundle that is under review.
-	uv run bookshelf record --force
-	uv run bookshelf validate
+	uv run bookshelf record --force --version $(VERSION) --bundle $(BUNDLE)
+	uv run bookshelf validate $(BUNDLE)
 
 
 publish:  ## replay the recorded bundle to the Bookshelf API
-	uv run bookshelf publish
+	uv run bookshelf publish $(BUNDLE)
 
 
 publish-dry-run:  ## resolve the edition the bundle would publish to, without publishing
-	uv run bookshelf publish --dry-run
+	uv run bookshelf publish $(BUNDLE) --dry-run

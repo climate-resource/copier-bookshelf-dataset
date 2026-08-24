@@ -17,6 +17,11 @@ on:
         required: false
         type: string
         default: "3.12"
+      version:
+        description: Single version to publish. Publishes every version the recipe declares when left empty.
+        required: false
+        type: string
+        default: ""
     secrets:
       BOOKSHELF_CLIENT_ID:
         description: WorkOS M2M client ID
@@ -26,7 +31,7 @@ on:
         required: true
     outputs:
       outcome:
-        description: Publish outcome
+        description: One publish summary per version, as a JSON array
         value: ${{ jobs.publish.outputs.outcome }}
 
 permissions:
@@ -34,7 +39,7 @@ permissions:
 
 jobs:
   publish:
-    name: Record and publish bundle
+    name: Record and publish bundles
     runs-on: ubuntu-latest
     environment: deploy
     outputs:
@@ -51,10 +56,12 @@ jobs:
           path: .copier-bookshelf-dataset
           persist-credentials: false
 
-      - name: Record and validate bundle
+      - name: Record and validate bundles
+        id: record
         uses: ./.copier-bookshelf-dataset/actions/record-bundle
         with:
           python-version: ${{ inputs.python-version }}
+          version: ${{ inputs.version }}
 
       - name: Exchange M2M credentials
         id: token
@@ -75,23 +82,26 @@ jobs:
           echo "::add-mask::${token}"
           echo "token=${token}" >> "${GITHUB_OUTPUT}"
 
-      - name: Replay bundle
+      - name: Replay bundles
         id: publish
         shell: bash
         env:
           API_BASE_URL: ${{ inputs.api-base-url }}
+          BUNDLES: ${{ steps.record.outputs.bundles }}
           # The CLI reads the credential from the environment,
           # so the token never reaches argv or the process list.
           BOOKSHELF_TOKEN: ${{ steps.token.outputs.token }}
+        # Every bundle is replayed. Publishing an unchanged book is idempotent and leaves the edition where it was.
         run: |
           set -euo pipefail
-          result="$(uv run bookshelf publish bundle \
-            --api-url "${API_BASE_URL}" \
-            --json)"
-          outcome="$(jq -er '.outcome' <<<"${result}")"
-          echo "outcome=${outcome}" >> "${GITHUB_OUTPUT}"
-          {
-            echo "## Publish outcome"
-            echo
-            echo "\`${result}\`"
-          } >> "${GITHUB_STEP_SUMMARY}"
+          results="$(mktemp)"
+          echo "## Publish outcome" >> "${GITHUB_STEP_SUMMARY}"
+          echo >> "${GITHUB_STEP_SUMMARY}"
+          for bundle in ${BUNDLES}; do
+            result="$(uv run bookshelf publish "${bundle}" \
+              --api-url "${API_BASE_URL}" \
+              --json)"
+            printf '%s\n' "${result}" >> "${results}"
+            echo "* \`${result}\`" >> "${GITHUB_STEP_SUMMARY}"
+          done
+          echo "outcome=$(jq -sc . "${results}")" >> "${GITHUB_OUTPUT}"

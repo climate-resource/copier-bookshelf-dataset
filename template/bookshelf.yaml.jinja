@@ -1,7 +1,42 @@
-collection: {{ dataset_name }}
-license: MIT
-visibility: public
-authors:
-  - name: {{ author | tojson }}
-    email: {{ author_email }}
-notebook: build.py
+# The recipe carries every fact about the books this feedstock produces.
+# Format: https://github.com/climate-resource/bookshelf/blob/feat/adopt-bookshelf-sdk/docs/explanation/recipe-format.md
+volume:
+  name: {{ dataset_name }}
+  maintainers:
+    - name: {{ author | tojson }}
+      email: {{ author_email }}
+  keywords:
+    - {{ dataset_name }}
+
+# Defaults for every book
+# Any overrides for a specific book win
+defaults:
+  title: {{ dataset_name_human | tojson }}
+  description: {{ dataset_description | tojson }}
+  publisher: Climate Resource
+  repository_url: {{ project_url }}
+  visibility: public
+  authors:
+    - name: {{ author | tojson }}
+      email: {{ author_email }}
+  resources:
+    # A resource type never moves between books, so it is stated once here.
+    raw:
+      type: tabular
+
+build:
+  notebook: build.py
+
+# One entry per upstream version. `bookshelf record --version` picks one.
+books:
+  - version: "v0.1.0"
+    license: CC-BY-4.0
+    license_url: https://creativecommons.org/licenses/by/4.0/
+    description: >-
+      The scaffolded example book.
+      Replace it with the first real version of {{ dataset_name_human }}.
+    resources:
+      # A checked-in input needs no sha256.
+      # Replace it with `uri:` and the `sha256:` the fetch is checked against.
+      raw:
+        path: inputs/raw.csv

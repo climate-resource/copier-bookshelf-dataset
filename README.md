@@ -35,7 +35,26 @@ It will ask you lots of questions about the dataset you want to create.
 Once you have created your repository, there are then a number of further
 steps which have to be done to get everything running as intended.
 
+## What the template scaffolds
+
+A generated feedstock is a working feedstock, not a blank slate.
+It ships a recipe declaring one book, a checked-in example input under `inputs/`,
+and a `build.py` that reads it, processes it and writes one timeseries.
+`make run` records and validates it offline, before a line of real code is written.
+
+## Worked examples
+
+The SDK's [examples README](https://github.com/climate-resource/bookshelf/blob/main/examples/README.md)
+lists the example feedstocks and explains how to use them.
+The [recipe format](https://github.com/climate-resource/bookshelf/blob/main/docs/explanation/recipe-format.md)
+documents every field a recipe can carry.
+
 ## Feedstock automation
+
+A bundle holds one book, so each version is recorded into its own `bundle/<version>` directory.
+CI records every version the recipe declares, and the publish workflow replays every one of them.
+Publishing an unchanged book is idempotent, so a version that has not moved keeps its edition.
+Pass a `version` input to either reusable workflow to narrow that to one book.
 
 This public repository hosts the reusable feedstock workflows in `.github/workflows/feedstock-ci.yaml` and `.github/workflows/feedstock-publish.yaml`.
 Their composite action lives in `actions/record-bundle`.

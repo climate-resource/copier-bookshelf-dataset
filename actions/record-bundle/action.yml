@@ -1,32 +1,28 @@
 name: "Record Bookshelf bundle"
-description: "Record and validate a feedstock bundle without API credentials"
+description: "Record and validate a feedstock's books without API credentials"
 
 inputs:
   python-version:
     description: "Python version used to run the feedstock"
     required: false
     default: "3.12"
-  build-file:
-    description: "Standalone Jupytext build file"
-    required: false
-    default: "build.py"
   recipe:
-    description: "Slim Bookshelf recipe"
+    description: "Sectioned Bookshelf recipe"
     required: false
     default: "bookshelf.yaml"
   bundle:
-    description: "Output bundle directory"
+    description: "Directory the per-version bundles are written under"
     required: false
     default: "bundle"
-  cache-path:
-    description: "Raw input cache directory"
+  version:
+    description: "Single version to record. Records every version the recipe declares when left empty."
     required: false
-    default: ".cache"
+    default: ""
 
 outputs:
-  bundle-path:
-    description: "Recorded bundle directory"
-    value: ${{ inputs.bundle }}
+  bundles:
+    description: "Space separated bundle directories, one per recorded version"
+    value: ${{ steps.record.outputs.bundles }}
 
 runs:
   using: "composite"
@@ -37,42 +33,62 @@ runs:
         python-version: ${{ inputs.python-version }}
         enable-cache: "true"
 
-    - name: Derive raw input cache key
+    - name: Derive fetched input cache key
       id: raw-cache-key
       shell: bash
       env:
-        BUILD_FILE: ${{ inputs.build-file }}
-      run: python3 "${GITHUB_ACTION_PATH}/cache_key.py" "${BUILD_FILE}"
+        RECIPE: ${{ inputs.recipe }}
+      run: python3 "${GITHUB_ACTION_PATH}/cache_key.py" "${RECIPE}"
 
-    - name: Restore raw inputs
+    - name: Restore fetched inputs
       if: steps.raw-cache-key.outputs.found == 'true'
       uses: actions/cache@v6
       with:
-        path: ${{ inputs.cache-path }}
-        key: bookshelf-raw-${{ runner.os }}-${{ steps.raw-cache-key.outputs.key }}
+        path: .cache
+        key: bookshelf-content-${{ runner.os }}-${{ steps.raw-cache-key.outputs.key }}
 
     - name: Install locked feedstock environment
       shell: bash
       run: uv sync --locked
 
-    - name: Record bundle
+    - name: Resolve the versions to record
+      id: versions
       shell: bash
       env:
-        BUILD_FILE: ${{ inputs.build-file }}
+        RECIPE: ${{ inputs.recipe }}
+        VERSION: ${{ inputs.version }}
+      # The recipe is the one place versions are written down, so an empty input
+      # means every book rather than a list repeated in the caller workflow.
+      run: uv run python "${GITHUB_ACTION_PATH}/recipe_versions.py" "${RECIPE}"
+
+    - name: Record and validate every version
+      id: record
+      shell: bash
+      env:
         RECIPE: ${{ inputs.recipe }}
         BUNDLE: ${{ inputs.bundle }}
-      # This step owns the bundle directory in CI, so it replaces whatever is there.
+        VERSIONS: ${{ steps.versions.outputs.versions }}
+        # The SDK caches fetched content under its platform directory by default,
+        # which no runner keeps between jobs.
+        BOOKSHELF_CACHE_DIR: .cache
+      # This step lays the bundle directories out, so it reports them rather than leaving
+      # a caller to join a bundle root and a version itself.
+      # It also owns the bundle directory in CI, so it replaces whatever is there.
       # A bare `bookshelf record` refuses to, which is what protects a local bundle under review.
-      run: >-
-        uv run bookshelf record "${BUILD_FILE}"
-        --recipe "${RECIPE}"
-        --bundle "${BUNDLE}"
-        --force
-        --json
-
-    - name: Validate bundle
-      shell: bash
-      env:
-        BUNDLE: ${{ inputs.bundle }}
-      # The same validation a feedstock runs locally through `make run`.
-      run: uv run bookshelf validate "${BUNDLE}" --json
+      run: |
+        set -euo pipefail
+        bundles=""
+        for version in ${VERSIONS}; do
+          bundle="${BUNDLE}/${version}"
+          echo "::group::${version}"
+          uv run bookshelf record \
+            --recipe "${RECIPE}" \
+            --bundle "${bundle}" \
+            --version "${version}" \
+            --force \
+            --json
+          uv run bookshelf validate "${bundle}" --json
+          echo "::endgroup::"
+          bundles="${bundles}${bundles:+ }${bundle}"
+        done
+        echo "bundles=${bundles}" >> "${GITHUB_OUTPUT}"

@@ -1,7 +1,42 @@
-collection: primap-hist-2024
-license: MIT
-visibility: public
-authors:
-  - name: "Ada Lovelace"
-    email: ada.lovelace@climate-resource.com
-notebook: build.py
+# The recipe carries every fact about the books this feedstock produces.
+# Format: https://github.com/climate-resource/bookshelf/blob/feat/adopt-bookshelf-sdk/docs/explanation/recipe-format.md
+volume:
+  name: primap-hist-2024
+  maintainers:
+    - name: "Ada Lovelace"
+      email: ada.lovelace@climate-resource.com
+  keywords:
+    - primap-hist-2024
+
+# Defaults for every book
+# Any overrides for a specific book win
+defaults:
+  title: "PRIMAP-hist 2024"
+  description: "Historical national emissions, hyphenated and numbered."
+  publisher: Climate Resource
+  repository_url: https://github.com/climate-resource/bookshelf-primap-hist-2024
+  visibility: public
+  authors:
+    - name: "Ada Lovelace"
+      email: ada.lovelace@climate-resource.com
+  resources:
+    # A resource type never moves between books, so it is stated once here.
+    raw:
+      type: tabular
+
+build:
+  notebook: build.py
+
+# One entry per upstream version. `bookshelf record --version` picks one.
+books:
+  - version: "v0.1.0"
+    license: CC-BY-4.0
+    license_url: https://creativecommons.org/licenses/by/4.0/
+    description: >-
+      The scaffolded example book.
+      Replace it with the first real version of PRIMAP-hist 2024.
+    resources:
+      # A checked-in input needs no sha256.
+      # Replace it with `uri:` and the `sha256:` the fetch is checked against.
+      raw:
+        path: inputs/raw.csv
