@@ -24,9 +24,10 @@ def test_generated_feedstock_uses_record_and_replay_shape(feedstock: Feedstock) 
     assert "asyncio" not in build
     assert "async def" not in build
     assert "await " not in build
-    assert '"bookshelf[publish,dataframes]"' in pyproject
-    assert "climate-resource/bookshelf" in pyproject
-    assert 'branch = "feat/adopt-bookshelf-sdk"' in pyproject
+    # The SDK is a beta on PyPI, so the specifier names it
+    # and nothing sources it from git.
+    assert '"bookshelf[publish,dataframes]>=1.0.0b1"' in pyproject
+    assert "[tool.uv.sources]" not in pyproject
     assert '"build.py" = [' in ruff
     assert '"E402"' in ruff
     assert 'src = [\n    ".",' in ruff

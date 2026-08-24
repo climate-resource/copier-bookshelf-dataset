@@ -1,5 +1,5 @@
 # The recipe carries every fact about the books this feedstock produces.
-# Format: https://github.com/climate-resource/bookshelf/blob/feat/adopt-bookshelf-sdk/docs/explanation/recipe-format.md
+# Format: https://github.com/climate-resource/bookshelf/blob/main/docs/explanation/recipe-format.md
 volume:
   name: primap-hist-2024
   maintainers:

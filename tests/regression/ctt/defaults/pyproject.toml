@@ -5,7 +5,7 @@ description = "Test project made with copier-template-tester"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "bookshelf[publish,dataframes]",
+    "bookshelf[publish,dataframes]>=1.0.0b1",
     "pandas>=2.2",
 ]
 
@@ -14,7 +14,3 @@ dev = [
     "mypy>=1.11.2",
     "towncrier>=25.8.0",
 ]
-
-[tool.uv.sources]
-# Using an unpublished branch for testing
-bookshelf = { git = "https://github.com/climate-resource/bookshelf", branch = "feat/adopt-bookshelf-sdk", subdirectory = "packages/bookshelf" }
