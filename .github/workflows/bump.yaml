@@ -145,7 +145,7 @@ jobs:
       - name: Land the pre-release version on main
         if: steps.bump.outputs.is-prerelease != 'true'
         env:
-          PREV_VERSION: ${{ steps.bump.outputs.new-version }}
+          RELEASE_VERSION: ${{ steps.bump.outputs.new-version }}
         run: |
           set -euo pipefail
 
@@ -153,7 +153,7 @@ jobs:
           uv lock
 
           DEV_VERSION="$(uv version --short)"
-          echo "Landing pre-release ${PREV_VERSION} > ${DEV_VERSION} on main"
+          echo "Landing pre-release ${RELEASE_VERSION} > ${DEV_VERSION} on main"
 
-          git commit -a -m "bump(dev): version ${PREV_VERSION} > ${DEV_VERSION}"
+          git commit -a -m "bump(dev): version ${RELEASE_VERSION} > ${DEV_VERSION}"
           git push
