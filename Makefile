@@ -38,8 +38,12 @@ ctt:  ## run ctt (copier-template-tester) to generate output from running this t
 	uv run ctt
 
 .PHONY: test
-test:  ## run the tests
-	uv run pytest tests -r a -v
+test:  ## run the tests, including the slow rendered-feedstock checks
+	uv run pytest -n auto -r a -v
+
+.PHONY: test-fast
+test-fast:  ## run only the fast tests, skipping the rendered-feedstock checks
+	uv run pytest -r a -v -m "not slow"
 
 
 .PHONY: changelog-draft

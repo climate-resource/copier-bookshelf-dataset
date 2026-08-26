@@ -1,0 +1,52 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    ":semanticCommits"
+  ],
+  "labels": ["dependencies"],
+  "timezone": "Australia/Melbourne",
+  "pre-commit": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "description": "Group non-major updates, let releases settle before proposing",
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "non-major",
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "The rendered fixtures are ctt output, so Renovate never edits them directly",
+      "matchFileNames": ["tests/regression/ctt/**"],
+      "enabled": false
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "rev: pins inside the rendered pre-commit config",
+      "managerFilePatterns": ["/^template/\\.pre-commit-config\\.yaml$/"],
+      "matchStrings": [
+        "repo: https://github\\.com/(?<depName>[^/\\s]+/[^/\\s]+)\\n\\s+rev: [\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ],
+      "datasourceTemplate": "github-tags"
+    },
+    {
+      "customType": "regex",
+      "description": "Tool versions pinned inline in the template, annotated for Renovate",
+      "managerFilePatterns": ["/^template/.+$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s+[A-Za-z_]+: ?[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "ruff pinned as a uvx version in the Makefiles",
+      "managerFilePatterns": ["/(^|/)Makefile(\\.jinja)?$/"],
+      "matchStrings": ["uvx ruff@(?<currentValue>\\S+)"],
+      "depNameTemplate": "ruff",
+      "datasourceTemplate": "pypi"
+    }
+  ]
+}

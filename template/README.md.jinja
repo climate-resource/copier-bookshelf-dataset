@@ -7,11 +7,30 @@ for the [bookshelf](https://github.com/climate-resource/bookshelf).
 
 ## Getting started
 
+Prepare the freshly generated repository:
+
+```bash
+   make initial-setup
+```
+
+That does the `git init`, sets the origin remote, writes `uv.lock` and makes the first commit.
+Recording derives provenance from git, so it needs all three.
+The target is guarded, so re-running it on an existing repository changes nothing.
+
 Install the local virtual environment:
 
 ```bash
    make virtual-environment
 ```
+
+## Updating from the template
+
+```bash
+   copier update
+```
+
+The template declares no Copier tasks, so this works without `--trust`
+and Renovate can propose template updates on its own.
 
 Each dataset consists of two files:
 

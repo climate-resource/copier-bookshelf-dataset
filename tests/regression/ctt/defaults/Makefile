@@ -49,6 +49,18 @@ virtual-environment:  ## update virtual environment, create a new one if it does
 	uv sync
 	uvx pre-commit install
 
+.PHONY: initial-setup
+initial-setup:  ## prepare a freshly generated feedstock, safe to re-run
+    # Recording derives provenance from git, so it needs an origin remote and a commit
+    # to point at. CI syncs with `--locked`, so it needs a lock file alongside them.
+	@[ -d .git ] || git init
+	@git remote get-url origin >/dev/null 2>&1 || git remote add origin https://github.com/climate-resource/ctt-project
+	@[ -f uv.lock ] || uv lock
+	@git add .
+	@git rev-parse HEAD >/dev/null 2>&1 \
+		|| git -c user.name="Tim Slim" -c user.email="timslim@climate-resource.com" \
+		commit -q -m "Initial scaffold from copier-bookshelf-dataset"
+
 run:  ## Record and validate one book, selected with VERSION=vX.Y.Z
     # --force because rebuilding is the point of this target.
     # A bare `bookshelf record` refuses to replace a bundle that is under review.

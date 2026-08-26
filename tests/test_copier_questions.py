@@ -143,23 +143,29 @@ def test_the_answer_sets_differ_in_the_answers_that_matter() -> None:
         assert len(set(values)) == len(values), question
 
 
-def test_generation_tasks_are_safe_to_re_run() -> None:
-    """Copier runs the tasks on every copy, including into an existing repository."""
-    initialise, remote, lock, stage, commit = COPIER["_tasks"]
-
+def test_the_template_declares_no_copier_tasks() -> None:
+    """Tasks force `--trust`, which stops Renovate applying a template update."""
     assert COPIER["_subdirectory"] == "template"
+    assert "_tasks" not in COPIER
 
-    # Every task that writes checks first, so a second copy changes nothing.
-    assert "git init" in initialise and '[ ! -d ".git" ]' in initialise
-    assert "git remote add origin" in remote and "git remote get-url origin" in remote
-    assert "uv lock" in lock and "[ -f uv.lock ]" in lock
-    assert stage.strip() == "git add ."
-    assert "commit -q -m" in commit and "git rev-parse HEAD" in commit
+
+def test_initial_setup_prepares_what_recording_needs() -> None:
+    """`make initial-setup` replaced the tasks, so it carries the same guarantees."""
+    makefile = (ROOT / "template" / "Makefile.jinja").read_text()
+
+    target = makefile[makefile.index("initial-setup:") : makefile.index("run:")]
+
+    # Every step that writes checks first, so a second run changes nothing.
+    assert "[ -d .git ] || git init" in target
+    assert "git remote get-url origin" in target and "git remote add origin" in target
+    assert "[ -f uv.lock ] || uv lock" in target
+    assert "git add ." in target
+    assert "git rev-parse HEAD" in target and "commit -q -m" in target
 
 
 def test_the_scaffold_commit_is_attributed_to_the_author() -> None:
     """A fresh feedstock has no git config of its own to fall back on."""
-    tasks = "\n".join(COPIER["_tasks"])
+    makefile = (ROOT / "template" / "Makefile.jinja").read_text()
 
-    assert 'user.name="{{ author }}"' in tasks
-    assert 'user.email="{{ author_email }}"' in tasks
+    assert 'user.name="{{ author }}"' in makefile
+    assert 'user.email="{{ author_email }}"' in makefile

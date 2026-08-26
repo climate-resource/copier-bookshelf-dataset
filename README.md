@@ -23,8 +23,11 @@ make virtual-environment
 To start a new repository run `copier` with our template:
 
 ```bash
-uvx copier copy --trust gh:climate-resource/copier-bookshelf-dataset $path_to_my_new_repo
+uvx copier copy https://github.com/climate-resource/copier-bookshelf-dataset.git $path_to_my_new_repo
 ```
+
+Use the full Git URL rather than the `gh:` shorthand.
+Copier records it in `.copier-answers.yml`, and Renovate can only look up tags on the full form.
 
 Copier will use the latest tagged release for generating a new project. If you wish to
 use a specific commit/tag the `--vcs-ref` flag can be used (`--vcs-ref HEAD` will use
@@ -32,8 +35,13 @@ the most recent commit).
 
 It will ask you lots of questions about the dataset you want to create.
 
-Once you have created your repository, there are then a number of further
-steps which have to be done to get everything running as intended.
+Then run `make initial-setup` inside the new repository.
+This does the `git init`, sets the origin remote, writes `uv.lock` and makes the first commit.
+Recording derives provenance from git, so it needs all three.
+
+The template declares no Copier tasks, so plain `copier copy` and `copier update` work
+without `--trust`, and Renovate can apply template updates to a feedstock on its own.
+A generated feedstock ships a `renovate.json` with the Copier manager switched on.
 
 ## What the template scaffolds
 
@@ -86,6 +94,9 @@ because releases created with `GITHUB_TOKEN` do not trigger other workflows.
 No `PERSONAL_ACCESS_TOKEN` is needed.
 The bump workflow uses the built-in `GITHUB_TOKEN`.
 
+Consumers pick a template release up with `copier update --vcs-ref v1.2.3`,
+or let Renovate open the pull request for them.
+
 ## Updating repositories
 
 If you need to update your repository,
@@ -123,3 +134,24 @@ have on generated repositories under different possible answers to our copier qu
 Put another way, ctt provides a pure regression test of our template,
 making sure that any changes to the output it generates are immediately obvious
 and trackable over different commits.
+
+Run `make ctt` whenever `copier.yaml` or `template/` changes and commit the result.
+The tests render from that committed output, so a stale copy fails CI.
+On a Renovate pull request the `Regenerate fixtures` workflow runs `ctt` and pushes the
+result back onto the branch, because Renovate only edits `template/`.
+
+## Tests
+
+```bash
+make test       # everything, including the slow rendered-feedstock checks
+make test-fast  # skip the slow ones
+```
+
+`tests/test_rendered.py` renders every `ctt.toml` case from the working tree,
+runs `make initial-setup`, `ruff`, `actionlint` and `make run` inside it,
+and checks the live render against the committed fixture.
+It takes a few minutes, which is the price of knowing every render actually works.
+
+The remaining tests are fast contract checks over the committed fixtures:
+the copier questions and their validators, the composite action's inputs,
+the cache key, the generated metadata and the feedstock layout.

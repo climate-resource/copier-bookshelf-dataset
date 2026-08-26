@@ -161,6 +161,4 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# The generated feedstock's lock file. `_tasks` writes it only when absent, so a committed
-# copy would pin one SDK commit forever and never refresh.
-tests/regression/ctt/*/uv.lock
+# tests/regression/ctt/ is committed, it is the fixture the rendered tests compare against.
