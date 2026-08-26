@@ -82,10 +82,8 @@ Dispatch the "Bump version" workflow and pick a bump rule.
 The workflow bumps the version with `uv version`, builds the CHANGELOG with towncrier,
 tags, and drafts the GitHub release in a single run.
 
-The steps are inlined rather than delegated to a shared reusable workflow.
-GitHub does not let a public repository resolve actions or reusable workflows
-that live in a private repository, and this repository is public,
-so the steps live directly in the workflow instead.
+The work is delegated to the shared `climate-resource/github-actions` bump workflow,
+so both this repository and every generated feedstock call the same thing.
 
 For a generated feedstock, publishing that draft release by hand is what triggers the feedstock publish workflow.
 A release published by CI would not fire it,
