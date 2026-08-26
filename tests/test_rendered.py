@@ -7,6 +7,7 @@ generated feedstock.
 """
 
 import os
+import re
 import shutil
 import subprocess
 import tomllib
@@ -168,11 +169,19 @@ def test_the_live_render_matches_the_committed_fixture(rendered: Rendered) -> No
     assert not differing, f"run `make ctt` and commit the result: {differing}"
 
 
+def ruff_pin(root: Path) -> str:
+    """Return the ruff the feedstock pins, so linting matches what it ships."""
+    match = re.search(r"uvx ruff@(\S+)", (root / "Makefile").read_text())
+    assert match, "the rendered Makefile pins no ruff version"
+    return match.group(1)
+
+
 def test_the_rendered_feedstock_is_lintable(rendered: Rendered) -> None:
     """The feedstock ships a ruff config, so it has to satisfy its own config."""
+    ruff = f"ruff@{ruff_pin(rendered.path)}"
     for command in (
-        ("uvx", "ruff@0.15.22", "check", "."),
-        ("uvx", "ruff@0.15.22", "format", "--check", "."),
+        ("uvx", ruff, "check", "."),
+        ("uvx", ruff, "format", "--check", "."),
     ):
         result = run(command, rendered.path)
         assert result.returncode == 0, (

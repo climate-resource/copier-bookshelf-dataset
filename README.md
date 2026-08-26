@@ -148,8 +148,8 @@ make test-fast  # skip the slow ones
 ```
 
 `tests/test_rendered.py` renders every `ctt.toml` case from the working tree,
-runs `make initial-setup`, `ruff`, `actionlint` and `make run` inside it,
-and checks the live render against the committed fixture.
+lints it with `ruff`, validates its workflows with `actionlint` and its pre-commit
+and Renovate configs, and checks the live render against the committed fixture.
 It takes a few minutes, which is the price of knowing every render actually works.
 
 The remaining tests are fast contract checks over the committed fixtures:
