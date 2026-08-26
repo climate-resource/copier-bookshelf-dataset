@@ -6,6 +6,7 @@ directly, so an edit that only breaks at render time fails here rather than in a
 generated feedstock.
 """
 
+import json
 import os
 import re
 import shutil
@@ -16,7 +17,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from conftest import BUILD_PRODUCTS, CTT_DIR, ROOT
+from conftest import CTT_DIR, ROOT, shipped_files
 
 CTT_TOML = ROOT / "ctt.toml"
 
@@ -88,7 +89,7 @@ def render(case_name: str, tmp_path: Path) -> Path:
     source = template_copy(tmp_path / "template-src")
     destination = tmp_path / "rendered"
 
-    result = subprocess.run(  # noqa: PLW1510
+    result = subprocess.run(
         (
             "uv",
             "run",
@@ -104,6 +105,7 @@ def render(case_name: str, tmp_path: Path) -> Path:
         env=ENV,
         capture_output=True,
         text=True,
+        check=False,
     )
     assert result.returncode == 0, (
         f"copier copy failed for {case_name}:\n{result.stdout}\n{result.stderr}"
@@ -128,20 +130,10 @@ def rendered(
     return Rendered(name=name, path=render(name, tmp_path_factory.mktemp(name)))
 
 
-def shipped(root: Path) -> dict[str, bytes]:
-    """Return the generated files under a directory, without any build products."""
-    return {
-        str(path.relative_to(root)): path.read_bytes()
-        for path in root.rglob("*")
-        if path.is_file()
-        and not BUILD_PRODUCTS.intersection(path.relative_to(root).parts)
-    }
-
-
 def run(command: tuple[str, ...], cwd: Path) -> subprocess.CompletedProcess[str]:
     """Run a command inside a rendered feedstock, capturing what it said."""
-    return subprocess.run(  # noqa: PLW1510
-        command, cwd=cwd, env=ENV, capture_output=True, text=True
+    return subprocess.run(
+        command, cwd=cwd, env=ENV, capture_output=True, text=True, check=False
     )
 
 
@@ -156,8 +148,8 @@ def test_the_live_render_matches_the_committed_fixture(rendered: Rendered) -> No
     """A stale `tests/regression/ctt` is a fixture that no longer proves anything."""
     fixture = CTT_DIR / rendered.name
 
-    live = shipped(rendered.path)
-    committed = shipped(fixture)
+    live = shipped_files(rendered.path)
+    committed = shipped_files(fixture)
 
     assert set(live) == set(committed), "run `make ctt` and commit the result"
 
@@ -208,7 +200,7 @@ def test_the_rendered_pre_commit_config_is_valid(rendered: Rendered) -> None:
 
 def test_the_rendered_renovate_config_is_valid(rendered: Rendered) -> None:
     """Renovate silently ignores a config it cannot parse, so parse it here."""
-    config = yaml.safe_load((rendered.path / "renovate.json").read_text())
+    config = json.loads((rendered.path / "renovate.json").read_text())
 
     assert config["$schema"] == "https://docs.renovatebot.com/renovate-schema.json"
     assert config["copier"]["enabled"] is True
@@ -216,7 +208,7 @@ def test_the_rendered_renovate_config_is_valid(rendered: Rendered) -> None:
 
 def test_this_repository_has_a_renovate_config() -> None:
     """Renovate keeps the pins inside `template/` moving, so it needs a config."""
-    config = yaml.safe_load((ROOT / "renovate.json").read_text())
+    config = json.loads((ROOT / "renovate.json").read_text())
 
     managed = {manager["description"] for manager in config["customManagers"]}
     assert managed, "no custom managers, so the template's pins would never move"
