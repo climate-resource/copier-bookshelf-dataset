@@ -147,8 +147,8 @@ make test-fast  # skip the slow ones
 ```
 
 `tests/test_rendered.py` renders every `ctt.toml` case from the working tree,
-lints it with `ruff`, validates its workflows with `actionlint`,
-runs its pre-commit config, parses its `renovate.json`,
+lints it with `ruff`, checks its workflows with `actionlint`,
+validates its pre-commit config, parses its `renovate.json`,
 and checks the live render against the committed fixture.
 It takes a few minutes, which is the price of knowing every render actually works.
 

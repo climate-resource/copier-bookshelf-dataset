@@ -32,7 +32,7 @@ RECORDS_THE_SOURCE = frozenset(
 
 @pytest.fixture(scope="session")
 def template_source(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """Copy the template out of the repository and commit it, once for every case.
+    """Copy the template out of the repository and commit it, once for all the cases.
 
     Copier renders a git checkout at its last tag, so the working tree is copied out
     to be what is under test. The copy is still committed, because the generated
