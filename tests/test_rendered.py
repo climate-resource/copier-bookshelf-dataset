@@ -7,38 +7,17 @@ generated feedstock.
 """
 
 import json
-import os
 import re
 import shutil
 import subprocess
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 import yaml
-from conftest import CTT_DIR, ROOT, shipped_files
-
-CTT_TOML = ROOT / "ctt.toml"
+from conftest import CASES, CTT_DIR, ENV, ROOT, shipped_files, uses_lines
 
 pytestmark = pytest.mark.slow
-
-# uv resolves against an active environment, so this repository's own venv is dropped
-# rather than inherited by a rendered feedstock.
-ENV = {name: value for name, value in os.environ.items() if name != "VIRTUAL_ENV"}
-
-
-def load_cases() -> dict[str, dict[str, object]]:
-    """Return the answer set behind each ctt output directory, keyed by its name."""
-    config = tomllib.loads(CTT_TOML.read_text())
-    defaults = config.get("defaults", {})
-    return {
-        output.rsplit("/", 1)[-1]: {**defaults, **overrides}
-        for output, overrides in config.get("output", {}).items()
-    }
-
-
-CASES = load_cases()
 
 # These record where the render came from: the answers file keeps the template path, and
 # the workflow callers pin the commit. Rendering out of a temporary copy moves both.
@@ -51,13 +30,15 @@ RECORDS_THE_SOURCE = frozenset(
 )
 
 
-def template_copy(destination: Path) -> Path:
-    """Copy the template out of the repository and commit it.
+@pytest.fixture(scope="session")
+def template_source(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Copy the template out of the repository and commit it, once for every case.
 
     Copier renders a git checkout at its last tag, so the working tree is copied out
     to be what is under test. The copy is still committed, because the generated
     workflow callers pin themselves to the commit Copier resolves.
     """
+    destination = tmp_path_factory.mktemp("template") / "src"
     destination.mkdir()
     shutil.copy(ROOT / "copier.yaml", destination / "copier.yaml")
     shutil.copytree(ROOT / "template", destination / "template")
@@ -81,12 +62,11 @@ def template_copy(destination: Path) -> Path:
     return destination
 
 
-def render(case_name: str, tmp_path: Path) -> Path:
+def render(case_name: str, tmp_path: Path, source: Path) -> Path:
     """Render one answer set and return the rendered directory."""
     data_file = tmp_path / "answers.yaml"
     data_file.write_text(yaml.safe_dump(CASES[case_name]))
 
-    source = template_copy(tmp_path / "template-src")
     destination = tmp_path / "rendered"
 
     result = subprocess.run(
@@ -123,11 +103,14 @@ class Rendered:
 
 @pytest.fixture(params=sorted(CASES), scope="module")
 def rendered(
-    request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory
+    request: pytest.FixtureRequest,
+    tmp_path_factory: pytest.TempPathFactory,
+    template_source: Path,
 ) -> Rendered:
     """Render each answer set once, and run every check against that one render."""
     name = request.param
-    return Rendered(name=name, path=render(name, tmp_path_factory.mktemp(name)))
+    path = render(name, tmp_path_factory.mktemp(name), template_source)
+    return Rendered(name=name, path=path)
 
 
 def run(command: tuple[str, ...], cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -209,12 +192,7 @@ def test_the_rendered_renovate_config_parses(rendered: Rendered) -> None:
 def test_the_rendered_callers_resolve_a_ref(rendered: Rendered) -> None:
     """An unresolved ref renders as a bare `@`, which a workflow call cannot use."""
     for name in ("feedstock-ci.yaml", "feedstock-publish.yaml"):
-        caller = (rendered.path / ".github" / "workflows" / name).read_text()
-        calls = [
-            line.strip()
-            for line in caller.splitlines()
-            if line.lstrip().startswith("uses:")
-        ]
+        calls = uses_lines(rendered.path / ".github" / "workflows" / name)
 
         assert calls, f"{name} calls nothing"
         for call in calls:

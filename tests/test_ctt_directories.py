@@ -10,7 +10,6 @@ directory and prepared with `make initial-setup` before it can record anything.
 Preparing and recording are the expensive parts, so both happen once per session.
 """
 
-import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -18,16 +17,23 @@ from typing import Any
 
 import pytest
 import yaml
-from conftest import BUNDLE, FEEDSTOCKS, VERSION, Feedstock
+from conftest import BUNDLE, ENV, FEEDSTOCKS, VERSION, Feedstock
 
 pytestmark = pytest.mark.slow
 
 # The recorder adds these itself, so they are not what the build file registered.
 DOCUMENTS = frozenset({"build.ipynb", "build.html"})
 
-# uv resolves against an active environment, so this repository's own venv is dropped
-# rather than inherited by a generated feedstock.
-ENV = {name: value for name, value in os.environ.items() if name != "VIRTUAL_ENV"}
+
+def commit_count(workspace: Path) -> bytes:
+    """Return the number of commits the prepared workspace carries."""
+    return subprocess.run(
+        ("git", "rev-list", "--count", "HEAD"),
+        cwd=workspace,
+        env=ENV,
+        stdout=subprocess.PIPE,
+        check=True,
+    ).stdout
 
 
 @pytest.fixture(scope="session")
@@ -61,26 +67,12 @@ def workspace(feedstock: Feedstock, workspaces: dict[str, Path]) -> Path:
 def test_initial_setup_is_safe_to_re_run(workspace: Path) -> None:
     """A second run must not relock, re-add the remote or make another commit."""
 
-    before = subprocess.run(
-        ("git", "rev-list", "--count", "HEAD"),
-        cwd=workspace,
-        env=ENV,
-        stdout=subprocess.PIPE,
-        check=True,
-    ).stdout
+    before = commit_count(workspace)
     lock = (workspace / "uv.lock").read_bytes()
 
     subprocess.run(("make", "initial-setup"), cwd=workspace, env=ENV, check=True)
 
-    after = subprocess.run(
-        ("git", "rev-list", "--count", "HEAD"),
-        cwd=workspace,
-        env=ENV,
-        stdout=subprocess.PIPE,
-        check=True,
-    ).stdout
-
-    assert after == before
+    assert commit_count(workspace) == before
     assert (workspace / "uv.lock").read_bytes() == lock
 
 

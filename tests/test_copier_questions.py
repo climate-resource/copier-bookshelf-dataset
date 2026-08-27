@@ -5,12 +5,11 @@ rejected, and render nothing when it is accepted. These tests render them the sa
 Copier does, so a loosened pattern shows up here rather than in a generated feedstock.
 """
 
-import tomllib
 import warnings
 
 import jinja2
 import pytest
-from conftest import COPIER, QUESTIONS, ROOT
+from conftest import CASES, COPIER, QUESTIONS, ROOT
 from jinja2_ansible_filters import AnsibleCoreFiltersExtension
 
 
@@ -123,23 +122,15 @@ def test_project_url_defaults_to_the_conventional_feedstock_repository() -> None
 
 def test_every_ctt_answer_set_satisfies_the_validators() -> None:
     """The regression fixtures have to be answers a real user could give."""
-    ctt = tomllib.loads((ROOT / "ctt.toml").read_text())
-    defaults = ctt["defaults"]
-
-    for output, overrides in ctt["output"].items():
-        answers = {**defaults, **overrides}
+    for case, answers in CASES.items():
         for question in ("dataset_name", "project_url"):
-            assert not rejection(question, answers[question]), f"{output}/{question}"
+            assert not rejection(question, answers[question]), f"{case}/{question}"
 
 
 def test_the_answer_sets_differ_in_the_answers_that_matter() -> None:
     """Generating the same feedstock twice would stress nothing."""
-    ctt = tomllib.loads((ROOT / "ctt.toml").read_text())
-    defaults = ctt["defaults"]
-    answers = [{**defaults, **overrides} for overrides in ctt["output"].values()]
-
     for question in ("dataset_name", "project_url", "author"):
-        values = [answer[question] for answer in answers]
+        values = [answers[question] for answers in CASES.values()]
         assert len(set(values)) == len(values), question
 
 

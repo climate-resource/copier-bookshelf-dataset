@@ -3,7 +3,7 @@
 import json
 import re
 
-from conftest import ACTION, ROOT
+from conftest import ACTION, ROOT, uses_lines
 
 WORKFLOWS = ROOT / ".github" / "workflows"
 
@@ -176,18 +176,14 @@ def test_bump_delegates_to_the_shared_actions_repository() -> None:
     )
 
     for caller in callers:
-        uses = [
-            line.strip()
-            for line in caller.read_text().splitlines()
-            if line.lstrip().startswith("uses:")
+        shared = [
+            line
+            for line in uses_lines(caller)
+            if "climate-resource/github-actions" in line
         ]
-        shared = [line for line in uses if "climate-resource/github-actions" in line]
 
-        assert shared == [line for line in uses if SHARED_BUMP.fullmatch(line)], (
-            caller.relative_to(ROOT),
-            shared,
-        )
-        assert len(shared) == 1, caller.relative_to(ROOT)
+        assert len(shared) == 1, (caller.relative_to(ROOT), shared)
+        assert SHARED_BUMP.fullmatch(shared[0]), (caller.relative_to(ROOT), shared[0])
 
 
 def test_this_repository_has_a_renovate_config() -> None:
