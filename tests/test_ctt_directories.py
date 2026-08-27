@@ -52,9 +52,14 @@ def workspaces(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Path]:
     return prepared
 
 
-def test_initial_setup_is_safe_to_re_run(workspaces: dict[str, Path]) -> None:
+@pytest.fixture
+def workspace(feedstock: Feedstock, workspaces: dict[str, Path]) -> Path:
+    """The prepared workspace for the feedstock under test."""
+    return workspaces[feedstock.name]
+
+
+def test_initial_setup_is_safe_to_re_run(workspace: Path) -> None:
     """A second run must not relock, re-add the remote or make another commit."""
-    workspace = workspaces[min(workspaces)]
 
     before = subprocess.run(
         ("git", "rev-list", "--count", "HEAD"),
@@ -109,7 +114,7 @@ def registered(manifest: dict[str, Any]) -> dict[str, dict[str, Any]]:
     }
 
 
-def test_towncrier_draft(feedstock: Feedstock, workspaces: dict[str, Path]):
+def test_towncrier_draft(feedstock: Feedstock, workspace: Path):
     res = subprocess.run(
         (
             "uvx",
@@ -119,7 +124,7 @@ def test_towncrier_draft(feedstock: Feedstock, workspaces: dict[str, Path]):
             "--version",
             "0.2.0",
         ),
-        cwd=workspaces[feedstock.name],
+        cwd=workspace,
         env=ENV,
         stdout=subprocess.PIPE,
         check=True,
@@ -132,12 +137,12 @@ def test_towncrier_draft(feedstock: Feedstock, workspaces: dict[str, Path]):
 def test_run(
     feedstock: Feedstock,
     recorded: dict[str, dict[str, Any]],
-    workspaces: dict[str, Path],
+    workspace: Path,
 ):
     """Recording produces a bundle whose book is the one the recipe describes."""
     book = recorded[feedstock.name]["book"]
 
-    assert (workspaces[feedstock.name] / BUNDLE).exists()
+    assert (workspace / BUNDLE).exists()
     assert book["volume"] == feedstock.answers["dataset_name"]
     assert book["version"] == VERSION
     assert book["visibility"] == "public"

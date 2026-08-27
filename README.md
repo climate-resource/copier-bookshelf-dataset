@@ -89,8 +89,7 @@ For a generated feedstock, publishing that draft release by hand is what trigger
 A release published by CI would not fire it,
 because releases created with `GITHUB_TOKEN` do not trigger other workflows.
 
-No `PERSONAL_ACCESS_TOKEN` is needed.
-The bump workflow uses the built-in `GITHUB_TOKEN`.
+The bump workflow needs no `PERSONAL_ACCESS_TOKEN`, because it runs on the built-in `GITHUB_TOKEN`.
 
 Consumers pick a template release up with `copier update --vcs-ref v1.2.3`,
 or let Renovate open the pull request for them.
@@ -137,6 +136,8 @@ Run `make ctt` whenever `copier.yaml` or `template/` changes and commit the resu
 The tests render from that committed output, so a stale copy fails CI.
 On a Renovate pull request the `Regenerate fixtures` workflow runs `ctt` and pushes the
 result back onto the branch, because Renovate only edits `template/`.
+That push needs the organisation `PERSONAL_ACCESS_TOKEN` secret,
+because a `GITHUB_TOKEN` push would not re-run CI on the branch.
 
 ## Tests
 
@@ -146,8 +147,9 @@ make test-fast  # skip the slow ones
 ```
 
 `tests/test_rendered.py` renders every `ctt.toml` case from the working tree,
-lints it with `ruff`, validates its workflows with `actionlint` and its pre-commit
-and Renovate configs, and checks the live render against the committed fixture.
+lints it with `ruff`, validates its workflows with `actionlint`,
+runs its pre-commit config, parses its `renovate.json`,
+and checks the live render against the committed fixture.
 It takes a few minutes, which is the price of knowing every render actually works.
 
 The remaining tests are fast contract checks over the committed fixtures:

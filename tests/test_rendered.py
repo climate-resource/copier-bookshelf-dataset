@@ -198,7 +198,7 @@ def test_the_rendered_pre_commit_config_is_valid(rendered: Rendered) -> None:
     assert result.returncode == 0, f"{result.stdout}\n{result.stderr}"
 
 
-def test_the_rendered_renovate_config_is_valid(rendered: Rendered) -> None:
+def test_the_rendered_renovate_config_parses(rendered: Rendered) -> None:
     """Renovate silently ignores a config it cannot parse, so parse it here."""
     config = json.loads((rendered.path / "renovate.json").read_text())
 
@@ -206,17 +206,16 @@ def test_the_rendered_renovate_config_is_valid(rendered: Rendered) -> None:
     assert config["copier"]["enabled"] is True
 
 
-def test_this_repository_has_a_renovate_config() -> None:
-    """Renovate keeps the pins inside `template/` moving, so it needs a config."""
-    config = json.loads((ROOT / "renovate.json").read_text())
-
-    managed = {manager["description"] for manager in config["customManagers"]}
-    assert managed, "no custom managers, so the template's pins would never move"
-
-
 def test_the_rendered_callers_resolve_a_ref(rendered: Rendered) -> None:
     """An unresolved ref renders as a bare `@`, which a workflow call cannot use."""
     for name in ("feedstock-ci.yaml", "feedstock-publish.yaml"):
         caller = (rendered.path / ".github" / "workflows" / name).read_text()
+        calls = [
+            line.strip()
+            for line in caller.splitlines()
+            if line.lstrip().startswith("uses:")
+        ]
 
-        assert caller.rsplit("@", 1)[-1].strip(), f"{name} pinned nothing"
+        assert calls, f"{name} calls nothing"
+        for call in calls:
+            assert call.rsplit("@", 1)[-1].strip(), f"{name} pinned nothing: {call}"

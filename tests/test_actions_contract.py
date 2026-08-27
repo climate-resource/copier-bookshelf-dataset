@@ -1,5 +1,6 @@
-"""Public contract tests for the colocated Bookshelf feedstock actions."""
+"""Public contract tests for the colocated actions and this repository's workflows."""
 
+import json
 import re
 
 from conftest import ACTION, ROOT
@@ -180,6 +181,18 @@ def test_bump_delegates_to_the_shared_actions_repository() -> None:
             for line in caller.read_text().splitlines()
             if line.lstrip().startswith("uses:")
         ]
+        shared = [line for line in uses if "climate-resource/github-actions" in line]
 
-        assert len(uses) == 1, caller.relative_to(ROOT)
-        assert SHARED_BUMP.fullmatch(uses[0]), uses[0]
+        assert shared == [line for line in uses if SHARED_BUMP.fullmatch(line)], (
+            caller.relative_to(ROOT),
+            shared,
+        )
+        assert len(shared) == 1, caller.relative_to(ROOT)
+
+
+def test_this_repository_has_a_renovate_config() -> None:
+    """Renovate keeps the pins inside `template/` moving, so it needs a config."""
+    config = json.loads((ROOT / "renovate.json").read_text())
+
+    managed = {manager["description"] for manager in config["customManagers"]}
+    assert managed, "no custom managers, so the template's pins would never move"
