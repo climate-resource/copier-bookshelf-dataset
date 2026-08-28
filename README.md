@@ -94,6 +94,15 @@ The bump workflow needs no `PERSONAL_ACCESS_TOKEN`, because it runs on the built
 Consumers pick a template release up with `copier update --vcs-ref v1.2.3`,
 or let Renovate open the pull request for them.
 
+A green test suite proves the render is valid, not that the rendered feedstock still works
+against a live Bookshelf.
+The [release pilot](docs/runbooks/release-pilot.md) closes that gap.
+It drives a tagged release through the `bookshelf-test` feedstock and asks the API what landed:
+
+```bash
+bash scripts/release-pilot.sh --template-ref v1.2.3
+```
+
 ## Updating repositories
 
 If you need to update your repository,
