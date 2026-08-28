@@ -5,12 +5,11 @@ rejected, and render nothing when it is accepted. These tests render them the sa
 Copier does, so a loosened pattern shows up here rather than in a generated feedstock.
 """
 
-import tomllib
 import warnings
 
 import jinja2
 import pytest
-from conftest import COPIER, QUESTIONS, ROOT
+from conftest import CASES, COPIER, QUESTIONS, ROOT
 from jinja2_ansible_filters import AnsibleCoreFiltersExtension
 
 
@@ -123,43 +122,41 @@ def test_project_url_defaults_to_the_conventional_feedstock_repository() -> None
 
 def test_every_ctt_answer_set_satisfies_the_validators() -> None:
     """The regression fixtures have to be answers a real user could give."""
-    ctt = tomllib.loads((ROOT / "ctt.toml").read_text())
-    defaults = ctt["defaults"]
-
-    for output, overrides in ctt["output"].items():
-        answers = {**defaults, **overrides}
+    for case, answers in CASES.items():
         for question in ("dataset_name", "project_url"):
-            assert not rejection(question, answers[question]), f"{output}/{question}"
+            assert not rejection(question, answers[question]), f"{case}/{question}"
 
 
 def test_the_answer_sets_differ_in_the_answers_that_matter() -> None:
     """Generating the same feedstock twice would stress nothing."""
-    ctt = tomllib.loads((ROOT / "ctt.toml").read_text())
-    defaults = ctt["defaults"]
-    answers = [{**defaults, **overrides} for overrides in ctt["output"].values()]
-
     for question in ("dataset_name", "project_url", "author"):
-        values = [answer[question] for answer in answers]
+        values = [answers[question] for answers in CASES.values()]
         assert len(set(values)) == len(values), question
 
 
-def test_generation_tasks_are_safe_to_re_run() -> None:
-    """Copier runs the tasks on every copy, including into an existing repository."""
-    initialise, remote, lock, stage, commit = COPIER["_tasks"]
-
+def test_the_template_declares_no_copier_tasks() -> None:
+    """Tasks force `--trust`, which stops Renovate applying a template update."""
     assert COPIER["_subdirectory"] == "template"
+    assert "_tasks" not in COPIER
 
-    # Every task that writes checks first, so a second copy changes nothing.
-    assert "git init" in initialise and '[ ! -d ".git" ]' in initialise
-    assert "git remote add origin" in remote and "git remote get-url origin" in remote
-    assert "uv lock" in lock and "[ -f uv.lock ]" in lock
-    assert stage.strip() == "git add ."
-    assert "commit -q -m" in commit and "git rev-parse HEAD" in commit
+
+def test_initial_setup_prepares_what_recording_needs() -> None:
+    """`make initial-setup` replaced the tasks, so it carries the same guarantees."""
+    makefile = (ROOT / "template" / "Makefile.jinja").read_text()
+
+    target = makefile[makefile.index("initial-setup:") : makefile.index("run:")]
+
+    # Every step that writes checks first, so a second run changes nothing.
+    assert "[ -d .git ] || git init" in target
+    assert "git remote get-url origin" in target and "git remote add origin" in target
+    assert "[ -f uv.lock ] || uv lock" in target
+    assert "git add ." in target
+    assert "git rev-parse HEAD" in target and "commit -q -m" in target
 
 
 def test_the_scaffold_commit_is_attributed_to_the_author() -> None:
     """A fresh feedstock has no git config of its own to fall back on."""
-    tasks = "\n".join(COPIER["_tasks"])
+    makefile = (ROOT / "template" / "Makefile.jinja").read_text()
 
-    assert 'user.name="{{ author }}"' in tasks
-    assert 'user.email="{{ author_email }}"' in tasks
+    assert 'user.name="{{ author }}"' in makefile
+    assert 'user.email="{{ author_email }}"' in makefile

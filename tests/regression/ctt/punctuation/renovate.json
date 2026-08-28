@@ -1,0 +1,75 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    ":semanticCommits"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "timezone": "Australia/Melbourne",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "automerge": false,
+  "pre-commit": {
+    "enabled": true
+  },
+  "copier": {
+    "enabled": true
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "before 6am on monday"
+    ]
+  },
+  "vulnerabilityAlerts": {
+    "labels": [
+      "security"
+    ]
+  },
+  "packageRules": [
+    {
+      "description": "Template releases apply on their own schedule and get their own pull request",
+      "matchManagers": [
+        "copier"
+      ],
+      "schedule": [
+        "at any time"
+      ],
+      "labels": [
+        "template-update"
+      ]
+    },
+    {
+      "description": "Group non-major Python dependency updates, let releases settle before proposing",
+      "matchManagers": [
+        "pep621"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "python non-major",
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Group GitHub Actions updates",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "github-actions"
+    },
+    {
+      "description": "The reusable feedstock workflows are pinned to the Copier ref, so `copier update` moves them, not Renovate",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchDepNames": [
+        "climate-resource/copier-bookshelf-dataset"
+      ],
+      "enabled": false
+    }
+  ]
+}

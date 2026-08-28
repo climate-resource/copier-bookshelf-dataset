@@ -134,11 +134,14 @@ def test_template_keeps_the_generated_lock_file_under_version_control() -> None:
     assert "uv.lock" not in {line.strip() for line in ignored}
 
 
-def test_this_repository_ignores_every_generated_lock_file() -> None:
-    """The fixtures relock on each run, so a committed copy would pin an SDK commit."""
-    ignored = (ROOT / ".gitignore").read_text().splitlines()
-
-    assert "tests/regression/ctt/*/uv.lock" in {line.strip() for line in ignored}
+def test_the_rendered_fixtures_carry_no_build_products(
+    feedstocks: list[Feedstock],
+) -> None:
+    """ctt renders files, and nothing else. `make initial-setup` writes the rest."""
+    for generated in feedstocks:
+        assert not (generated.path / "uv.lock").exists()
+        assert not (generated.path / ".git").exists()
+        assert not (generated.path / "bundle").exists()
 
 
 def test_every_answer_set_generates_the_same_files(feedstocks: list[Feedstock]) -> None:

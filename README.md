@@ -23,8 +23,11 @@ make virtual-environment
 To start a new repository run `copier` with our template:
 
 ```bash
-uvx copier copy --trust gh:climate-resource/copier-bookshelf-dataset $path_to_my_new_repo
+uvx copier copy https://github.com/climate-resource/copier-bookshelf-dataset.git $path_to_my_new_repo
 ```
+
+Use the full Git URL rather than the `gh:` shorthand.
+Copier records it in `.copier-answers.yml`, and Renovate can only look up tags on the full form.
 
 Copier will use the latest tagged release for generating a new project. If you wish to
 use a specific commit/tag the `--vcs-ref` flag can be used (`--vcs-ref HEAD` will use
@@ -32,8 +35,13 @@ the most recent commit).
 
 It will ask you lots of questions about the dataset you want to create.
 
-Once you have created your repository, there are then a number of further
-steps which have to be done to get everything running as intended.
+Then run `make initial-setup` inside the new repository.
+This does the `git init`, sets the origin remote, writes `uv.lock` and makes the first commit.
+Recording derives provenance from git, so it needs all three.
+
+The template declares no Copier tasks, so plain `copier copy` and `copier update` work
+without `--trust`, and Renovate can apply template updates to a feedstock on its own.
+A generated feedstock ships a `renovate.json` with the Copier manager switched on.
 
 ## What the template scaffolds
 
@@ -74,17 +82,17 @@ Dispatch the "Bump version" workflow and pick a bump rule.
 The workflow bumps the version with `uv version`, builds the CHANGELOG with towncrier,
 tags, and drafts the GitHub release in a single run.
 
-The steps are inlined rather than delegated to a shared reusable workflow.
-GitHub does not let a public repository resolve actions or reusable workflows
-that live in a private repository, and this repository is public,
-so the steps live directly in the workflow instead.
+The work is delegated to the shared `climate-resource/github-actions` bump workflow,
+so both this repository and every generated feedstock call the same thing.
 
 For a generated feedstock, publishing that draft release by hand is what triggers the feedstock publish workflow.
 A release published by CI would not fire it,
 because releases created with `GITHUB_TOKEN` do not trigger other workflows.
 
-No `PERSONAL_ACCESS_TOKEN` is needed.
-The bump workflow uses the built-in `GITHUB_TOKEN`.
+The bump workflow needs no `PERSONAL_ACCESS_TOKEN`, because it runs on the built-in `GITHUB_TOKEN`.
+
+Consumers pick a template release up with `copier update --vcs-ref v1.2.3`,
+or let Renovate open the pull request for them.
 
 ## Updating repositories
 
@@ -123,3 +131,27 @@ have on generated repositories under different possible answers to our copier qu
 Put another way, ctt provides a pure regression test of our template,
 making sure that any changes to the output it generates are immediately obvious
 and trackable over different commits.
+
+Run `make ctt` whenever `copier.yaml` or `template/` changes and commit the result.
+The tests render from that committed output, so a stale copy fails CI.
+On a Renovate pull request the `Regenerate fixtures` workflow runs `ctt` and pushes the
+result back onto the branch, because Renovate only edits `template/`.
+That push needs the organisation `PERSONAL_ACCESS_TOKEN` secret,
+because a `GITHUB_TOKEN` push would not re-run CI on the branch.
+
+## Tests
+
+```bash
+make test       # everything, including the slow rendered-feedstock checks
+make test-fast  # skip the slow ones
+```
+
+`tests/test_rendered.py` renders every `ctt.toml` case from the working tree,
+lints it with `ruff`, checks its workflows with `actionlint`,
+validates its pre-commit config, parses its `renovate.json`,
+and checks the live render against the committed fixture.
+It takes a few minutes, which is the price of knowing every render actually works.
+
+The remaining tests are fast contract checks over the committed fixtures:
+the copier questions and their validators, the composite action's inputs,
+the cache key, the generated metadata and the feedstock layout.

@@ -4,6 +4,8 @@ Re-useable fixtures etc. for tests
 See https://docs.pytest.org/en/7.1.x/reference/fixtures.html#conftest-py-sharing-fixtures-across-multiple-files
 """
 
+import os
+import tomllib
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
@@ -22,6 +24,10 @@ BUNDLE = f"bundle/{VERSION}"
 
 COPIER = yaml.safe_load((ROOT / "copier.yaml").read_text())
 
+# uv resolves against an active environment, so this repository's own venv is dropped
+# rather than inherited by a rendered feedstock.
+ENV = {name: value for name, value in os.environ.items() if name != "VIRTUAL_ENV"}
+
 # Copier's settings start with an underscore, so what is left is what a user answers.
 QUESTIONS = {
     name: value
@@ -35,6 +41,43 @@ QUESTIONS = {
 BUILD_PRODUCTS = frozenset(
     {".venv", ".git", ".cache", ".ruff_cache", "__pycache__", "bundle", "uv.lock"}
 )
+
+
+def shipped_paths(root: Path) -> list[str]:
+    """Return the generated paths under a directory, relative and sorted."""
+    return sorted(
+        str(path.relative_to(root))
+        for path in root.rglob("*")
+        if path.is_file()
+        and not BUILD_PRODUCTS.intersection(path.relative_to(root).parts)
+    )
+
+
+def shipped_files(root: Path) -> dict[str, bytes]:
+    """Return the generated files under a directory, without any build products."""
+    return {name: (root / name).read_bytes() for name in shipped_paths(root)}
+
+
+def uses_lines(path: Path) -> list[str]:
+    """Return the stripped `uses:` lines of a workflow."""
+    return [
+        line.strip()
+        for line in path.read_text().splitlines()
+        if line.lstrip().startswith("uses:")
+    ]
+
+
+def ctt_cases() -> dict[str, dict[str, Any]]:
+    """Return the answer set behind each ctt output directory, keyed by its name."""
+    config = tomllib.loads((ROOT / "ctt.toml").read_text())
+    defaults = config.get("defaults", {})
+    return {
+        output.rsplit("/", 1)[-1]: {**defaults, **overrides}
+        for output, overrides in config.get("output", {}).items()
+    }
+
+
+CASES = ctt_cases()
 
 
 @dataclass(frozen=True)
@@ -60,12 +103,7 @@ class Feedstock:
 
     def shipped(self) -> list[str]:
         """Return the generated paths, relative and sorted, without build products."""
-        return sorted(
-            str(path.relative_to(self.path))
-            for path in self.path.rglob("*")
-            if path.is_file()
-            and not BUILD_PRODUCTS.intersection(path.relative_to(self.path).parts)
-        )
+        return shipped_paths(self.path)
 
 
 def generated_feedstocks() -> list[Feedstock]:

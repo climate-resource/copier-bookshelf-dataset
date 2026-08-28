@@ -3,16 +3,12 @@ name: Bump version
 # Manually bump the version, build the CHANGELOG from the changelog/ fragments,
 # tag, and draft the GitHub release.
 #
+# The work lives in the shared climate-resource/github-actions workflow.
+#
 # The release is drafted rather than published.
 # Publishing that draft by hand is what triggers the feedstock publish workflow.
 # A release published by CI would not fire it,
 # because releases created with GITHUB_TOKEN do not trigger other workflows.
-#
-# After tagging, a follow-up commit lands a pre-release version on main so that
-# subsequent commits do not share the tagged version.
-#
-# The steps are inlined so that this workflow does not depend on any private
-# repository, which keeps it working whether this feedstock is public or private.
 
 on:
   workflow_dispatch:
@@ -31,132 +27,13 @@ on:
           - "minor alpha"
           - "major alpha"
 
-permissions:
-  contents: write
-
 jobs:
   bump:
-    name: Bump version and create changelog
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v8.3.2
-        with:
-          python-version: "3.12"
-          enable-cache: true
-
-      - name: Configure git identity
-        env:
-          CI_COMMIT_EMAIL: ci-runner@climate-resource.invalid
-        run: |
-          set -euo pipefail
-          git config --global user.name "${GITHUB_ACTOR}"
-          git config --global user.email "${CI_COMMIT_EMAIL}"
-
-      - name: Bump version, build changelog, and tag
-        id: bump
-        env:
-          BUMP_RULE: ${{ inputs.bump_rule }}
-        run: |
-          set -euo pipefail
-
-          BASE_VERSION="$(uv version --short)"
-          echo "Bumping from version ${BASE_VERSION}"
-
-          # Each whitespace separated segment becomes its own --bump argument,
-          # so "patch alpha" means --bump patch --bump alpha.
-          read -r -a segments <<< "${BUMP_RULE}"
-          bump_args=()
-          for segment in "${segments[@]}"; do
-            bump_args+=(--bump "${segment}")
-          done
-
-          uv version --frozen "${bump_args[@]}"
-          uv lock
-
-          NEW_VERSION="$(uv version --short)"
-          echo "Bumping to version ${NEW_VERSION}"
-
-          uv run towncrier build --yes --version "v${NEW_VERSION}"
-
-          git commit -a -m "bump: version ${BASE_VERSION} -> ${NEW_VERSION}"
-          git tag "v${NEW_VERSION}"
-          git push
-          git push --tags
-
-          if [[ "${NEW_VERSION}" =~ (a|b|rc|dev) ]]; then
-            IS_PRERELEASE="true"
-          else
-            IS_PRERELEASE="false"
-          fi
-
-          {
-            echo "new-version=${NEW_VERSION}"
-            echo "tag=v${NEW_VERSION}"
-            echo "is-prerelease=${IS_PRERELEASE}"
-          } >> "${GITHUB_OUTPUT}"
-
-      - name: Generate release notes
-        if: steps.bump.outputs.is-prerelease != 'true'
-        env:
-          TAG: ${{ steps.bump.outputs.tag }}
-        run: |
-          set -euo pipefail
-
-          NOTES="${RUNNER_TEMP}/release_notes.md"
-          PREV_TAG="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
-
-          {
-            echo "## Changelog"
-            echo
-            # The newest towncrier section is everything between the marker and
-            # the heading of the previous release.
-            awk '
-              /^<!-- towncrier release notes start -->/ { marker = 1; next }
-              marker && /^## / {
-                if (started) { exit }
-                started = 1; next
-              }
-              started { print }
-            ' CHANGELOG.md
-            echo
-            echo "## Commits"
-            echo
-            if [[ -n "${PREV_TAG}" ]]; then
-              git log "${PREV_TAG}..${TAG}" --pretty='format:* %h %s' --no-merges
-            else
-              git log "${TAG}" --pretty='format:* %h %s' --no-merges
-            fi
-          } > "${NOTES}"
-
-          echo "RELEASE_NOTES=${NOTES}" >> "${GITHUB_ENV}"
-          cat "${NOTES}"
-
-      - name: Draft GitHub release
-        if: steps.bump.outputs.is-prerelease != 'true'
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ steps.bump.outputs.tag }}
-          body_path: ${{ env.RELEASE_NOTES }}
-          draft: true
-
-      - name: Land the pre-release version on main
-        if: steps.bump.outputs.is-prerelease != 'true'
-        env:
-          PREV_VERSION: ${{ steps.bump.outputs.new-version }}
-        run: |
-          set -euo pipefail
-
-          uv version --frozen --bump patch --bump dev
-          uv lock
-
-          DEV_VERSION="$(uv version --short)"
-          echo "Landing pre-release ${PREV_VERSION} > ${DEV_VERSION} on main"
-
-          git commit -a -m "bump(dev): version ${PREV_VERSION} > ${DEV_VERSION}"
-          git push
+    uses: climate-resource/github-actions/.github/workflows/bump.yaml@v1.6.0
+    permissions:
+      contents: write
+    with:
+      bump-rule: ${{ inputs.bump_rule }}
+      python-version: "3.12"
+      create-release: true
+      release-draft: true

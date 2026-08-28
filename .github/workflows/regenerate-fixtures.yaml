@@ -1,0 +1,46 @@
+name: Regenerate fixtures
+
+# Renovate bumps pins inside template/, but the rendered copies under tests/regression/ctt
+# only change when ctt runs. Run it here and push the result back onto the Renovate branch.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - copier.yaml
+      - ctt.toml
+      - "template/**"
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate:
+    if: github.event.pull_request.user.login == 'renovate[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the PR branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          # GITHUB_TOKEN pushes never trigger CI, so use the organisation PAT.
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Render the regression fixtures
+        run: uv run --locked ctt
+      - name: Push the regenerated fixtures
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --cached --quiet; then
+            echo "fixtures already up to date"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: regenerate the regression fixtures"
+          git push

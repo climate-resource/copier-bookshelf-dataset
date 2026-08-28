@@ -64,12 +64,20 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
-      - name: Generate the feedstock fixtures
-        # The recording tests sync a generated feedstock against its lock file, and
-        # copier writes that file rather than the repository committing it.
-        # Without this step those tests skip and recording goes uncovered.
+      - name: Install actionlint
+        # The rendered-feedstock tests lint the generated workflows, and skip when
+        # actionlint is not on PATH.
+        env:
+          # renovate: datasource=github-releases depName=rhysd/actionlint
+          ACTIONLINT_VERSION: "1.7.9"
         run: |
-          uv run --locked ctt
+          set -euo pipefail
+          curl --proto '=https' --tlsv1.2 -sSfL \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            -o actionlint.tar.gz
+          tar -xzf actionlint.tar.gz actionlint
+          install -D actionlint "${HOME}/.local/bin/actionlint"
+          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
       - name: Run tests
         run: |
-          uv run --locked pytest tests -r a -v
+          uv run --locked pytest -n auto -r a -v

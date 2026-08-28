@@ -1,6 +1,9 @@
-"""Public contract tests for the colocated Bookshelf feedstock actions."""
+"""Public contract tests for the colocated actions and this repository's workflows."""
 
-from conftest import ACTION, ROOT
+import json
+import re
+
+from conftest import ACTION, ROOT, uses_lines
 
 WORKFLOWS = ROOT / ".github" / "workflows"
 
@@ -156,27 +159,36 @@ def test_action_scripts_use_native_python_311_annotations() -> None:
         assert "from __future__ import annotations" not in script.read_text()
 
 
-def test_nothing_depends_on_the_private_shared_actions_repository() -> None:
-    """This repository is public, so it cannot resolve private org actions.
+SHARED_BUMP = re.compile(
+    r"uses: climate-resource/github-actions"
+    r"/\.github/workflows/bump\.yaml@v\d+\.\d+\.\d+"
+)
 
-    GitHub refuses to resolve an action or reusable workflow that lives in a
-    private repository when the consumer is public, whatever the access policy
-    says. The template is covered too, because a generated feedstock may be
-    public.
+
+def test_bump_delegates_to_the_shared_actions_repository() -> None:
+    """Both bump workflows call the shared workflow, rather than inlining its steps.
+
+    The tag is not spelled out here, because Renovate moves it.
     """
-    definitions = (
-        *WORKFLOWS.glob("*.yaml"),
-        *(ROOT / "template" / ".github" / "workflows").glob("*.yaml"),
-        *ACTION.glob("*.yml"),
+    callers = (
+        WORKFLOWS / "bump.yaml",
+        ROOT / "template" / ".github" / "workflows" / "bump.yaml",
     )
 
-    offenders = [
-        f"{path.relative_to(ROOT)}: {line.strip()}"
-        for path in definitions
-        for line in path.read_text().splitlines()
-        # Prose may name the repository to explain why it is not used.
-        if line.lstrip().startswith("uses:")
-        and "climate-resource/github-actions" in line
-    ]
+    for caller in callers:
+        shared = [
+            line
+            for line in uses_lines(caller)
+            if "climate-resource/github-actions" in line
+        ]
 
-    assert not offenders
+        assert len(shared) == 1, (caller.relative_to(ROOT), shared)
+        assert SHARED_BUMP.fullmatch(shared[0]), (caller.relative_to(ROOT), shared[0])
+
+
+def test_this_repository_has_a_renovate_config() -> None:
+    """Renovate keeps the pins inside `template/` moving, so it needs a config."""
+    config = json.loads((ROOT / "renovate.json").read_text())
+
+    managed = {manager["description"] for manager in config["customManagers"]}
+    assert managed, "no custom managers, so the template's pins would never move"

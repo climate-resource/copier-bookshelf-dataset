@@ -5,11 +5,11 @@ In theory, these tests should only be run after we have run ctt to ensure the
 latest changes are picked up. In practice, even if you forget to run ctt the
 pre-commit hooks and CI will make sure you don't miss things completely.
 
-Recording is the expensive part, so every generated feedstock is recorded once for
-the whole session and the tests read the manifest that came out.
+A rendered fixture is files and nothing else, so each one is copied into a temporary
+directory and prepared with `make initial-setup` before it can record anything.
+Preparing and recording are the expensive parts, so both happen once per session.
 """
 
-import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -17,51 +17,78 @@ from typing import Any
 
 import pytest
 import yaml
-from conftest import BUNDLE, FEEDSTOCKS, VERSION, Feedstock
+from conftest import BUNDLE, ENV, FEEDSTOCKS, VERSION, Feedstock
+
+pytestmark = pytest.mark.slow
 
 # The recorder adds these itself, so they are not what the build file registered.
 DOCUMENTS = frozenset({"build.ipynb", "build.html"})
 
-# uv resolves against an active environment, so this repository's own venv is dropped
-# rather than inherited by a generated feedstock.
-ENV = {name: value for name, value in os.environ.items() if name != "VIRTUAL_ENV"}
 
-# Syncing is slow and idempotent, so a feedstock is synced once for the whole session.
-SYNCED: set[Path] = set()
-
-
-def setup_venv(feedstock: Feedstock):
-    if not (feedstock.path / "uv.lock").exists():
-        pytest.skip("the generated feedstock has no lock file to sync against")
-
-    if feedstock.path in SYNCED:
-        return
-
-    subprocess.run(
-        ("make", "virtual-environment"), cwd=feedstock.path, env=ENV, check=True
-    )
-
-    lock_file = feedstock.path / "uv.lock"
-    assert lock_file.exists()
-    SYNCED.add(feedstock.path)
+def commit_count(workspace: Path) -> bytes:
+    """Return the number of commits the prepared workspace carries."""
+    return subprocess.run(
+        ("git", "rev-list", "--count", "HEAD"),
+        cwd=workspace,
+        env=ENV,
+        stdout=subprocess.PIPE,
+        check=True,
+    ).stdout
 
 
 @pytest.fixture(scope="session")
-def recorded() -> dict[str, dict[str, Any]]:
-    """Record every generated feedstock and return the bundle manifests."""
+def workspaces(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Path]:
+    """Prepare each rendered fixture the way a new feedstock's owner would."""
+    prepared = {}
+
+    for generated in FEEDSTOCKS:
+        workspace = tmp_path_factory.mktemp(generated.name) / generated.name
+        shutil.copytree(generated.path, workspace)
+
+        subprocess.run(("make", "initial-setup"), cwd=workspace, env=ENV, check=True)
+        assert (workspace / "uv.lock").exists()
+        assert (workspace / ".git").exists()
+
+        # `uv sync` rather than `make virtual-environment`, because installing the
+        # pre-commit hooks proves nothing here and fails on a machine that sets
+        # core.hooksPath globally.
+        subprocess.run(("uv", "sync", "--locked"), cwd=workspace, env=ENV, check=True)
+        prepared[generated.name] = workspace
+
+    return prepared
+
+
+@pytest.fixture
+def workspace(feedstock: Feedstock, workspaces: dict[str, Path]) -> Path:
+    """The prepared workspace for the feedstock under test."""
+    return workspaces[feedstock.name]
+
+
+def test_initial_setup_is_safe_to_re_run(workspace: Path) -> None:
+    """A second run must not relock, re-add the remote or make another commit."""
+
+    before = commit_count(workspace)
+    lock = (workspace / "uv.lock").read_bytes()
+
+    subprocess.run(("make", "initial-setup"), cwd=workspace, env=ENV, check=True)
+
+    assert commit_count(workspace) == before
+    assert (workspace / "uv.lock").read_bytes() == lock
+
+
+@pytest.fixture(scope="session")
+def recorded(workspaces: dict[str, Path]) -> dict[str, dict[str, Any]]:
+    """Record every prepared feedstock and return the bundle manifests."""
     manifests = {}
 
-    for feedstock in FEEDSTOCKS:
-        setup_venv(feedstock)
+    for name, workspace in workspaces.items():
+        shutil.rmtree(workspace / "bundle", ignore_errors=True)
 
-        bundle_dir = feedstock.path / "bundle"
-        shutil.rmtree(bundle_dir, ignore_errors=True)
+        subprocess.run(("make", "run"), cwd=workspace, env=ENV, check=True)
 
-        subprocess.run(("make", "run"), cwd=feedstock.path, env=ENV, check=True)
-
-        manifest = feedstock.path / BUNDLE / "manifest.lock"
+        manifest = workspace / BUNDLE / "manifest.lock"
         assert manifest.exists()
-        manifests[feedstock.name] = yaml.safe_load(manifest.read_text())
+        manifests[name] = yaml.safe_load(manifest.read_text())
 
     return manifests
 
@@ -79,9 +106,7 @@ def registered(manifest: dict[str, Any]) -> dict[str, dict[str, Any]]:
     }
 
 
-def test_towncrier_draft(feedstock: Feedstock):
-    setup_venv(feedstock)
-
+def test_towncrier_draft(feedstock: Feedstock, workspace: Path):
     res = subprocess.run(
         (
             "uvx",
@@ -91,7 +116,7 @@ def test_towncrier_draft(feedstock: Feedstock):
             "--version",
             "0.2.0",
         ),
-        cwd=feedstock.path,
+        cwd=workspace,
         env=ENV,
         stdout=subprocess.PIPE,
         check=True,
@@ -101,11 +126,15 @@ def test_towncrier_draft(feedstock: Feedstock):
     assert expected in res.stdout.decode()
 
 
-def test_run(feedstock: Feedstock, recorded: dict[str, dict[str, Any]]):
+def test_run(
+    feedstock: Feedstock,
+    recorded: dict[str, dict[str, Any]],
+    workspace: Path,
+):
     """Recording produces a bundle whose book is the one the recipe describes."""
     book = recorded[feedstock.name]["book"]
 
-    assert (feedstock.path / BUNDLE).exists()
+    assert (workspace / BUNDLE).exists()
     assert book["volume"] == feedstock.answers["dataset_name"]
     assert book["version"] == VERSION
     assert book["visibility"] == "public"
