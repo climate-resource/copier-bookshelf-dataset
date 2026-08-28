@@ -84,6 +84,14 @@ Set the public `BOOKSHELF_TOKEN_URL` repository variable to the WorkOS AuthKit t
 The generated publish caller uses `secrets: inherit`.
 The reusable publish job carries `environment: deploy`, so those environment secrets are resolved when that job starts.
 
+A first publish into a new volume needs that volume to exist.
+`bookshelf publish` will not create one, so it fails with `Series 'primap-hist-2024' not found`.
+Create it once, from an account with WRITE:
+
+```bash
+   uv run bookshelf volume create primap-hist-2024 --licence CC-BY-4.0
+```
+
 `visibility` in `bookshelf.yaml` sets the tier of the book and of everything the build records,
 the `build.ipynb` and `build.html` documents included.
 Pass `visibility=` on a single `build.book.write(...)` call to narrow that one resource,

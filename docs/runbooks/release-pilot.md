@@ -31,6 +31,10 @@ Each step exercises one thing a template change can break:
 - The `deploy` environment on `bookshelf-test` carrying `BOOKSHELF_CLIENT_ID`
   and `BOOKSHELF_CLIENT_SECRET`, and the `BOOKSHELF_TOKEN_URL` repository variable set.
   These are configured once and outlive any single pilot.
+- The volume already created on the API.
+  A first publish into a new volume fails with `Series 'NAME' not found`,
+  because `bookshelf publish` will not create one.
+  Create it once with `uv run bookshelf volume create test --licence MIT`.
 - Read access to the pilot volume for the verify step.
   The book is recorded as hidden, so run `uv run bookshelf auth login` in the feedstock
   if `bookshelf show test` comes back empty.
@@ -81,6 +85,10 @@ The script stops at the first failure and names the command that will show you w
   here and cut a new release rather than patching the feedstock.
 - **The bump run fails.**
   Usually a missing changelog fragment. Add one under `changelog/` in the feedstock.
+- **The publish run fails at "Replay bundles" with `Series 'NAME' not found`.**
+  The volume does not exist on that deployment yet.
+  Create it once with `bookshelf volume create`, then re-run with `--from publish`
+  after re-running the failed workflow.
 - **The publish run fails at "Exchange M2M credentials".**
   The `deploy` environment secrets or `BOOKSHELF_TOKEN_URL` are wrong.
   Nothing to do with the template.

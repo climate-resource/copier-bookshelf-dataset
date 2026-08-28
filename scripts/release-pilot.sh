@@ -22,6 +22,7 @@ DATASET_VERSION=""
 FROM_STEP="preflight"
 TO_STEP="verify"
 ASSUME_YES="false"
+TRUST="false"
 
 usage() {
     sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
@@ -36,6 +37,8 @@ Options:
   --from STEP            First step to run. One of: preflight update record push bump release publish verify.
   --to STEP              Last step to run.
   --yes                  Do not prompt before pushing or publishing the release.
+  --trust                Pass --trust to copier. Needed when the feedstock was generated from a
+                         template version that declared tasks. Read them before trusting them.
 EOF
 }
 
@@ -49,6 +52,7 @@ while [[ $# -gt 0 ]]; do
         --from) FROM_STEP="$2"; shift 2 ;;
         --to) TO_STEP="$2"; shift 2 ;;
         --yes) ASSUME_YES="true"; shift ;;
+        --trust) TRUST="true"; shift ;;
         -h|--help) usage; exit 0 ;;
         *) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
     esac
@@ -167,6 +171,14 @@ if wants preflight; then
     fi
     gh api "repos/climate-resource/copier-bookshelf-dataset/git/ref/tags/${TEMPLATE_REF}" \
         >/dev/null 2>&1 || die "${TEMPLATE_REF} is not a tag on the template repository"
+    # A first publish into a new volume fails with "not found", so check before releasing.
+    if ! feedstock uv run bookshelf show "$(recipe_field volume.name)" \
+        "${API_ARGS[@]}" >/dev/null 2>&1; then
+        note "warning: the API has no volume for this feedstock yet."
+        note "         A first publish needs it created once with 'bookshelf volume create'."
+        note "         An unauthenticated session cannot see a hidden volume, so this may be a false alarm."
+    fi
+
     note "template ref:  ${TEMPLATE_REF}"
     note "feedstock:     ${FEEDSTOCK}"
     note "publish target: $(feedstock gh repo view --json nameWithOwner --jq .nameWithOwner)"
@@ -177,7 +189,12 @@ fi
 
 if wants update; then
     say "Update the feedstock onto ${TEMPLATE_REF}"
-    feedstock uvx copier update --vcs-ref "${TEMPLATE_REF}" --defaults --conflict inline
+    copier_args=(--vcs-ref "${TEMPLATE_REF}" --defaults --conflict inline)
+    [[ "${TRUST}" == "true" ]] && copier_args+=(--trust)
+    feedstock uvx copier update "${copier_args[@]}" || die "copier update failed (exit $?).
+    Exit 4 means the template version this feedstock was generated from declares tasks.
+    Copier replays that old version during an update, so it asks for consent.
+    Read the tasks on that ref, then re-run with --trust."
     if feedstock git grep -qI -e '<<<<<<<' -e '>>>>>>>' -- . 2>/dev/null; then
         feedstock git grep -lI -e '<<<<<<<' -- .
         die "the update left conflict markers. Resolve them, then re-run with --from record."

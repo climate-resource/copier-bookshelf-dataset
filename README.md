@@ -69,6 +69,10 @@ Their composite action lives in `actions/record-bundle`.
 Generated callers pin the reusable workflows to the exact Copier ref that generated the feedstock.
 The reusable workflow then checks out its composite action from the workflow's own commit, so the caller, workflow, and action cannot drift apart.
 
+A feedstock's first publish needs its volume created once with `bookshelf volume create`.
+`bookshelf publish` will not create one, so without it the publish workflow fails
+with `Series 'NAME' not found`.
+
 Publishing uses the feedstock repository environment named `deploy`.
 Configure `BOOKSHELF_CLIENT_ID` and `BOOKSHELF_CLIENT_SECRET` as environment secrets on that environment.
 Set the public `BOOKSHELF_TOKEN_URL` repository variable to the WorkOS AuthKit token endpoint.
