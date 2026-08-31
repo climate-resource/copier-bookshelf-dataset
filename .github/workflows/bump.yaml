@@ -18,6 +18,8 @@ on:
           - patch
           - minor
           - major
+          - alpha
+          - beta
           - "patch alpha"
           - "minor alpha"
           - "major alpha"
