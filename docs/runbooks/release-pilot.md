@@ -35,15 +35,18 @@ Each step exercises one thing a template change can break:
   A first publish into a new volume fails with `Series 'NAME' not found`,
   because `bookshelf publish` will not create one.
   Create it once with `uv run bookshelf volume create test --licence MIT`.
-- Read access to the pilot volume for the verify step.
-  The book is recorded as hidden, so run `uv run bookshelf auth login` in the feedstock
-  if `bookshelf show test` comes back empty.
+- A live Bookshelf credential, because the book is recorded as hidden.
+  Run `uv run bookshelf auth login` in the feedstock.
+  A stored credential that cannot refresh drops the client to anonymous without saying so,
+  which reads a hidden volume as an empty one.
+  Preflight refuses to start in that state rather than take a false baseline.
 
 ## Running it
 
 Cut the template release first.
 Dispatch the "Bump version" workflow on this repository, then publish the draft release
-it leaves behind. The pilot needs a real tag, because that is what a feedstock pins to.
+it leaves behind.
+The pilot needs a real tag, because that is what a feedstock pins to.
 
 Then:
 
@@ -56,6 +59,10 @@ Leave `--template-ref` off to pilot the latest release.
 The script prompts before the two steps that reach the outside world:
 pushing to `main`, and publishing the draft release.
 Pass `--yes` to skip both prompts once you trust the run.
+
+Each run leaves its state under `$XDG_STATE_HOME/release-pilot/`, so `--from` resumes against
+what the earlier invocation actually saw rather than guessing.
+Everything in there is derived, so deleting it costs only a full run.
 
 ## The steps
 
@@ -71,7 +78,7 @@ The script runs these in order.
 | `bump` | Dispatches the feedstock's "Bump version" workflow and follows the run. |
 | `release` | Publishes the draft release the bump left, which is what fires the publish workflow. |
 | `publish` | Follows the "Feedstock publish" run to its exit code. |
-| `verify` | Resolves the book on the API and checks it is published. |
+| `verify` | Resolves the book on the API, checks it is published, and checks the volume gained an edition. |
 
 ## When a step fails
 
@@ -81,10 +88,11 @@ The script stops at the first failure and names the command that will show you w
   The template moved a file the feedstock had edited by hand.
   Resolve them, commit, then re-run with `--from record`.
 - **`record` fails.**
-  The template's generated build no longer works. This is a template bug, so fix it
-  here and cut a new release rather than patching the feedstock.
+  The template's generated build no longer works.
+  This is a template bug, so fix it here and cut a new release rather than patching the feedstock.
 - **The bump run fails.**
-  Usually a missing changelog fragment. Add one under `changelog/` in the feedstock.
+  Usually a missing changelog fragment.
+  Add one under `changelog/` in the feedstock.
 - **The publish run fails at "Replay bundles" with `Series 'NAME' not found`.**
   The volume does not exist on that deployment yet.
   Create it once with `bookshelf volume create`, then re-run with `--from publish`
@@ -92,10 +100,14 @@ The script stops at the first failure and names the command that will show you w
 - **The publish run fails at "Exchange M2M credentials".**
   The `deploy` environment secrets or `BOOKSHELF_TOKEN_URL` are wrong.
   Nothing to do with the template.
-- **`verify` reports fewer editions than expected.**
-  Publishing an unchanged book is idempotent, so a book whose bundle hash did not move
-  keeps its edition. A template release that only touches, say, the README will do that.
-  It is a pass, not a failure.
+- **`verify` says the book did not move.**
+  Publishing an unchanged book is idempotent, so a release that changes nothing the bundle
+  covers lands no new edition.
+  The recorded bundle covers `build.py`, so most template releases do move it.
+  One that only touches, say, the README will not.
+  Re-run with `--allow-unchanged` when that is what you expect.
+  Left alone it is a failure, because a publish that wrote nothing proves only that the
+  workflow ran, not that it can write.
 
 ## After a good pilot
 
