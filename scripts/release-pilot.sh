@@ -69,8 +69,17 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "${WORK}"' EXIT
 
 say() { printf '\n=== %s ===\n' "$*"; }
-note() { printf '    %s\n' "$*"; }
-die() { printf '\nrelease-pilot: %s\n' "$*" >&2; exit 1; }
+note() { printf '    %s\n' "$@"; }
+
+# Each argument after the first is one indented continuation line.
+die() {
+    printf '\nrelease-pilot: %s\n' "$1" >&2
+    shift
+    for line in "$@"; do
+        printf '    %s\n' "${line}" >&2
+    done
+    exit 1
+}
 
 confirm() {
     [[ "${ASSUME_YES}" == "true" ]] && return 0
@@ -92,7 +101,8 @@ TO_INDEX="$(step_index "${TO_STEP}")"
 [[ "${FROM_INDEX}" -le "${TO_INDEX}" ]] || die "--from ${FROM_STEP} comes after --to ${TO_STEP}"
 
 wants() {
-    local index; index="$(step_index "$1")"
+    local index
+    index="$(step_index "$1")"
     [[ "${index}" -ge "${FROM_INDEX}" && "${index}" -le "${TO_INDEX}" ]]
 }
 
@@ -119,12 +129,13 @@ state_get() {
 
 state_put() {
     [[ "$2" != *$'\n'* ]] || die "release-pilot state holds one line per key, and $1 is not one"
-    local rest; rest="$(grep -v "^$1=" "${STATE_FILE}" || true)"
-    printf '%s\n%s=%s\n' "${rest}" "$1" "$2" | sed '/^$/d' >"${STATE_FILE}"
+    state_drop "$1"
+    printf '%s=%s\n' "$1" "$2" >>"${STATE_FILE}"
 }
 
 state_drop() {
-    local rest; rest="$(grep -v "^$1=" "${STATE_FILE}" || true)"
+    local rest
+    rest="$(grep -v "^$1=" "${STATE_FILE}" || true)"
     printf '%s\n' "${rest}" | sed '/^$/d' >"${STATE_FILE}"
 }
 
@@ -156,18 +167,21 @@ latest_run_id() {
         --jq '.[0].databaseId // 0'
 }
 
+draft_releases() {
+    feedstock gh release list --limit 100 --json tagName,isDraft "$@"
+}
+
 draft_tags() {
     # Wrapped in the delimiter, so an empty list still reads as a value that was recorded.
-    feedstock gh release list --limit 100 --json tagName,isDraft \
-        --jq 'map(select(.isDraft)) | map(.tagName) | ",\(join(",")),"'
+    draft_releases --jq 'map(select(.isDraft)) | map(.tagName) | ",\(join(",")),"'
 }
 
 watch_new_run() {
     # Waits for a run of $1 newer than $2 to appear, then follows it to its exit code.
     local workflow="$1" baseline="$2" waited=0 run_id
     is_number "${baseline}" && [[ "${baseline}" -gt 0 ]] \
-        || die "no baseline recorded for ${workflow}, so a finished earlier run would pass as this
-    one. Re-run the step that dispatches it."
+        || die "no baseline recorded for ${workflow}, so a finished earlier run would pass as this one." \
+            "Re-run the step that dispatches it."
     while :; do
         run_id="$(latest_run_id "${workflow}")"
         [[ "${run_id}" -gt "${baseline}" ]] && break
@@ -189,9 +203,16 @@ editions_now() {
     case "${code}" in
         0) jq '[.versions[]?.editions[]?] | length' "${document}" ;;
         5) echo 0 ;;
-        *) die "cannot read ${VOLUME} from the API, bookshelf exited ${code}.
-    $(tail -1 "${WORK}/volume.err")" ;;
+        *) die "cannot read ${VOLUME} from the API, bookshelf exited ${code}." \
+            "$(tail -1 "${WORK}/volume.err")" ;;
     esac
+}
+
+resolve_template_ref() {
+    [[ -n "${TEMPLATE_REF}" ]] && return 0
+    TEMPLATE_REF="$(gh release view --repo climate-resource/copier-bookshelf-dataset \
+        --json tagName --jq .tagName)"
+    note "no --template-ref given, using the latest release"
 }
 
 VOLUME=""
@@ -215,8 +236,9 @@ if wants preflight; then
     # A stored credential that cannot refresh drops the client to anonymous without saying so,
     # which would read a hidden volume as an empty one and give the verify step a false baseline.
     feedstock uv run bookshelf auth whoami >/dev/null 2>&1 \
-        || die "the Bookshelf credential is missing or expired, so the pilot could not tell an
-    empty volume from one it cannot see. Run: (cd ${FEEDSTOCK} && uv run bookshelf auth login)"
+        || die "the Bookshelf credential is missing or expired," \
+            "so the pilot could not tell an empty volume from one it cannot see." \
+            "Run: (cd ${FEEDSTOCK} && uv run bookshelf auth login)"
 
     [[ -z "$(feedstock git status --porcelain)" ]] \
         || die "${FEEDSTOCK} has uncommitted changes. Commit or stash them first."
@@ -226,11 +248,7 @@ if wants preflight; then
     [[ "$(feedstock git rev-parse HEAD)" == "$(feedstock git rev-parse origin/main)" ]] \
         || die "${FEEDSTOCK} is not level with origin/main"
 
-    if [[ -z "${TEMPLATE_REF}" ]]; then
-        TEMPLATE_REF="$(gh release view --repo climate-resource/copier-bookshelf-dataset \
-            --json tagName --jq .tagName)"
-        note "no --template-ref given, using the latest release"
-    fi
+    resolve_template_ref
     gh api "repos/climate-resource/copier-bookshelf-dataset/git/ref/tags/${TEMPLATE_REF}" \
         >/dev/null 2>&1 || die "${TEMPLATE_REF} is not a tag on the template repository"
 
@@ -243,19 +261,19 @@ if wants preflight; then
     note "the API holds $(state_get before_editions) edition(s) of ${VOLUME} today"
 fi
 
-[[ -n "${TEMPLATE_REF}" ]] || TEMPLATE_REF="$(gh release view \
-    --repo climate-resource/copier-bookshelf-dataset --json tagName --jq .tagName)"
+resolve_template_ref
 
 if wants update; then
     say "Update the feedstock onto ${TEMPLATE_REF}"
     copier_args=(--vcs-ref "${TEMPLATE_REF}" --defaults --conflict inline)
     [[ "${TRUST}" == "true" ]] && copier_args+=(--trust)
-    feedstock uvx copier update "${copier_args[@]}" || die "copier update failed (exit $?).
-    Exit 4 means the template version this feedstock was generated from declares tasks.
-    Copier replays that old version during an update, so it asks for consent.
-    Read the tasks on that ref, then re-run with --trust."
-    if feedstock git grep -qI -e '<<<<<<<' -e '>>>>>>>' -- . 2>/dev/null; then
-        feedstock git grep -lI -e '<<<<<<<' -- .
+    feedstock uvx copier update "${copier_args[@]}" || die "copier update failed (exit $?)." \
+        "Exit 4 means the template version this feedstock was generated from declares tasks." \
+        "Copier replays that old version during an update, so it asks for consent." \
+        "Read the tasks on that ref, then re-run with --trust."
+    markers="$(feedstock git grep -lI -e '<<<<<<<' -e '>>>>>>>' -- . 2>/dev/null || true)"
+    if [[ -n "${markers}" ]]; then
+        printf '%s\n' "${markers}"
         die "the update left conflict markers. Resolve them, then re-run with --from record."
     fi
     feedstock uv lock
@@ -268,8 +286,8 @@ if wants record; then
     say "Record ${VOLUME}@${DATASET_VERSION} locally"
     # A first publish into a new volume is refused, so say so before anything is released.
     feedstock uv run bookshelf show "${VOLUME}" "${API_ARGS[@]}" >/dev/null 2>&1 \
-        || note "warning: no volume named ${VOLUME} that this credential can see.
-             A first publish needs it created once with 'bookshelf volume create'."
+        || note "warning: no volume named ${VOLUME} that this credential can see." \
+            "A first publish needs it created once with 'bookshelf volume create'."
     # Proves the rendered feedstock still builds before anything reaches CI.
     feedstock make run "VERSION=${DATASET_VERSION}"
 fi
@@ -302,9 +320,10 @@ if wants release; then
     say "Publish the draft release"
     before="$(state_get drafts_before)"
     [[ -n "${before}" ]] \
-        || die "no draft release baseline was recorded, so a leftover draft from an earlier pilot
-    would be published instead. Re-run the bump step."
-    RELEASE_TAG="$(feedstock gh release list --limit 100 --json tagName,isDraft \
+        || die "no draft release baseline was recorded," \
+            "so a leftover draft from an earlier pilot would be published instead." \
+            "Re-run the bump step."
+    RELEASE_TAG="$(draft_releases \
         | jq -r --arg before "${before}" \
             '[.[] | select(.isDraft) | .tagName | select(IN(($before | split(","))[]) | not)][0] // ""')"
     [[ -n "${RELEASE_TAG}" ]] \
@@ -326,23 +345,25 @@ if wants verify; then
     book="${WORK}/book.json"
     feedstock uv run bookshelf show "${VOLUME}@${DATASET_VERSION}" --json "${API_ARGS[@]}" \
         >"${book}" \
-        || die "${VOLUME}@${DATASET_VERSION} does not resolve to a published book.
-    An unauthenticated session cannot see a hidden one, so try 'bookshelf auth login' first."
+        || die "${VOLUME}@${DATASET_VERSION} does not resolve to a published book." \
+            "An unauthenticated session cannot see a hidden one, so try 'bookshelf auth login' first."
 
     status="$(jq -r .status "${book}")"
     [[ "${status}" == "published" ]] || die "${VOLUME}@${DATASET_VERSION} is ${status}, not published"
 
     before="$(state_get before_editions)"
     after="$(editions_now)"
-    is_number "${before}" || die "no edition count was taken before the release, so this proves only
-    that a book is there, not that this run published one. Re-run from preflight."
+    is_number "${before}" || die "no edition count was taken before the release," \
+        "so this proves only that a book is there, not that this run published one." \
+        "Re-run from preflight."
     note "editions before: ${before}"
     note "editions now:    ${after}"
     if [[ "${after}" -le "${before}" ]]; then
         [[ "${ALLOW_UNCHANGED}" == "true" ]] \
-            || die "the book did not move, so the publish wrote nothing.
-    Publishing an unchanged book is idempotent, so a release that changes nothing the bundle
-    covers lands no new edition. Pass --allow-unchanged when that is what you expect."
+            || die "the book did not move, so the publish wrote nothing." \
+                "Publishing an unchanged book is idempotent," \
+                "so a release that changes nothing the bundle covers lands no new edition." \
+                "Pass --allow-unchanged when that is what you expect."
         note "no new edition, which --allow-unchanged accepts"
     fi
 
