@@ -21,6 +21,31 @@ from the examples given in that link.
 
 <!-- towncrier release notes start -->
 
+## copier-bookshelf-dataset v0.3.0b1 (2026-08-31)
+
+### Improvements
+
+- Raised the scaffolded `bookshelf` floor to 1.0.0b2.
+  A checked-in `path:` input records its bytes from that release, so an earlier one generates a
+  feedstock that records and validates but cannot publish. ([#22](https://github.com/climate-resource/copier-bookshelf-dataset/pull/22))
+- Added `alpha` and `beta` to the bump workflow's version rules,
+  so a feedstock can cut a pre-release without editing the workflow first. ([#23](https://github.com/climate-resource/copier-bookshelf-dataset/pull/23))
+
+### Bug Fixes
+
+- Pivoted the scaffolded build to wide before writing its timeseries.
+  The platform stores a timeseries with one column per year, so the long frame the scaffold
+  produced was recorded and validated happily and then refused at publish. ([#22](https://github.com/climate-resource/copier-bookshelf-dataset/pull/22))
+
+### Improved Documentation
+
+- Added a release pilot runbook and `scripts/release-pilot.sh`, which drives a tagged template release
+  through the `bookshelf-test` feedstock and checks the book reached the API.
+
+  Documented that a feedstock's first publish needs its volume created once with
+  `bookshelf volume create`, which `bookshelf publish` will not do for you. ([#22](https://github.com/climate-resource/copier-bookshelf-dataset/pull/22))
+
+
 ## copier-bookshelf-dataset v0.3.0a1 (2026-08-28)
 
 ### Breaking Changes
