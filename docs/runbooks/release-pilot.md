@@ -62,6 +62,8 @@ Pass `--yes` to skip both prompts once you trust the run.
 
 Each run leaves its state under `$XDG_STATE_HOME/release-pilot/`, so `--from` resumes against
 what the earlier invocation actually saw rather than guessing.
+A passing verify spends the edition baseline it compared, so a second `--from verify` cannot
+pass on a count taken before a pilot that already finished.
 Everything in there is derived, so deleting it costs only a full run.
 
 ## The steps

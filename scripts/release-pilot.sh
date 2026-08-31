@@ -118,8 +118,18 @@ state_get() {
 }
 
 state_put() {
+    [[ "$2" != *$'\n'* ]] || die "release-pilot state holds one line per key, and $1 is not one"
     local rest; rest="$(grep -v "^$1=" "${STATE_FILE}" || true)"
     printf '%s\n%s=%s\n' "${rest}" "$1" "$2" | sed '/^$/d' >"${STATE_FILE}"
+}
+
+state_drop() {
+    local rest; rest="$(grep -v "^$1=" "${STATE_FILE}" || true)"
+    printf '%s\n' "${rest}" | sed '/^$/d' >"${STATE_FILE}"
+}
+
+is_number() {
+    [[ "$1" =~ ^[0-9]+$ ]]
 }
 
 recipe_value() {
@@ -147,14 +157,15 @@ latest_run_id() {
 }
 
 draft_tags() {
-    feedstock gh release list --limit 30 --json tagName,isDraft \
-        --jq 'map(select(.isDraft)) | map(.tagName) | join(",")'
+    # Wrapped in the delimiter, so an empty list still reads as a value that was recorded.
+    feedstock gh release list --limit 100 --json tagName,isDraft \
+        --jq 'map(select(.isDraft)) | map(.tagName) | ",\(join(",")),"'
 }
 
 watch_new_run() {
     # Waits for a run of $1 newer than $2 to appear, then follows it to its exit code.
     local workflow="$1" baseline="$2" waited=0 run_id
-    [[ -n "${baseline}" && "${baseline}" -gt 0 ]] \
+    is_number "${baseline}" && [[ "${baseline}" -gt 0 ]] \
         || die "no baseline recorded for ${workflow}, so a finished earlier run would pass as this
     one. Re-run the step that dispatches it."
     while :; do
@@ -279,8 +290,9 @@ if wants bump; then
     say "Bump the feedstock version"
     # Both baselines are taken before the dispatch, so neither a finished earlier run nor a
     # leftover draft from a previous pilot can be mistaken for this one's.
-    state_put drafts_before "$(draft_tags)"
+    drafts="$(draft_tags)"
     baseline="$(latest_run_id bump.yaml)"
+    state_put drafts_before "${drafts}"
     feedstock gh workflow run bump.yaml -f "bump_rule=${BUMP_RULE}"
     watch_new_run bump.yaml "${baseline}"
     feedstock git fetch --quiet --tags origin
@@ -289,7 +301,10 @@ fi
 if wants release; then
     say "Publish the draft release"
     before="$(state_get drafts_before)"
-    RELEASE_TAG="$(feedstock gh release list --limit 30 --json tagName,isDraft \
+    [[ -n "${before}" ]] \
+        || die "no draft release baseline was recorded, so a leftover draft from an earlier pilot
+    would be published instead. Re-run the bump step."
+    RELEASE_TAG="$(feedstock gh release list --limit 100 --json tagName,isDraft \
         | jq -r --arg before "${before}" \
             '[.[] | select(.isDraft) | .tagName | select(IN(($before | split(","))[]) | not)][0] // ""')"
     [[ -n "${RELEASE_TAG}" ]] \
@@ -319,7 +334,7 @@ if wants verify; then
 
     before="$(state_get before_editions)"
     after="$(editions_now)"
-    [[ -n "${before}" ]] || die "no edition count was taken before the release, so this proves only
+    is_number "${before}" || die "no edition count was taken before the release, so this proves only
     that a book is there, not that this run published one. Re-run from preflight."
     note "editions before: ${before}"
     note "editions now:    ${after}"
@@ -332,6 +347,8 @@ if wants verify; then
     fi
 
     jq -r '"    address:   \(.address)\n    status:    \(.status)\n    published: \(.published_at)\n    resources: \([.resources[].name] | join(", "))"' "${book}"
+
+    state_drop before_editions
 
     say "Pilot passed"
     note "template ${TEMPLATE_REF} generated a feedstock that recorded, released and published."
