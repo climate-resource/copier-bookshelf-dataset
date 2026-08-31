@@ -5,7 +5,7 @@ description = "Historical national emissions, hyphenated and numbered."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "bookshelf[publish,dataframes]>=1.0.0b1",
+    "bookshelf[publish,dataframes]>=1.0.0b2",
     "pandas>=2.2",
 ]
 
