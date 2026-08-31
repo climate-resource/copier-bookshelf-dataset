@@ -179,9 +179,13 @@ def test_recorded_bundle_carries_the_declared_provenance(
     raw = resources["raw"]
     data = resources["data"]
 
-    # A checked-in input is catalogued as a pointer at its path, never re-hosted.
-    assert raw["kind"] == "pointer"
-    assert raw["external_uri"] == "inputs/raw.csv"
+    # A checked-in input is re-hosted, because a repository path is no address
+    # the platform can fetch. A pointer at one is refused at publish.
+    assert raw["kind"] == "managed"
+    assert "external_uri" not in raw
+    # A managed upload lands at a key with no suffix, so the format
+    # travels in the manifest instead.
+    assert raw["format"] == "csv"
     assert raw["generated"] is False
     assert raw["type"] == "tabular"
     assert data["generated"] is True
