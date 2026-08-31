@@ -69,6 +69,10 @@ Their composite action lives in `actions/record-bundle`.
 Generated callers pin the reusable workflows to the exact Copier ref that generated the feedstock.
 The reusable workflow then checks out its composite action from the workflow's own commit, so the caller, workflow, and action cannot drift apart.
 
+A feedstock's first publish needs its volume created once with `bookshelf volume create`.
+`bookshelf publish` will not create one, so without it the publish workflow fails
+with `Series 'NAME' not found`.
+
 Publishing uses the feedstock repository environment named `deploy`.
 Configure `BOOKSHELF_CLIENT_ID` and `BOOKSHELF_CLIENT_SECRET` as environment secrets on that environment.
 Set the public `BOOKSHELF_TOKEN_URL` repository variable to the WorkOS AuthKit token endpoint.
@@ -93,6 +97,15 @@ The bump workflow needs no `PERSONAL_ACCESS_TOKEN`, because it runs on the built
 
 Consumers pick a template release up with `copier update --vcs-ref v1.2.3`,
 or let Renovate open the pull request for them.
+
+A green test suite proves the render is valid, not that the rendered feedstock still works
+against a live Bookshelf.
+The [release pilot](docs/runbooks/release-pilot.md) closes that gap.
+It drives a tagged release through the `bookshelf-test` feedstock and asks the API what landed:
+
+```bash
+bash scripts/release-pilot.sh --template-ref v1.2.3
+```
 
 ## Updating repositories
 

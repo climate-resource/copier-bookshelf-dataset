@@ -26,7 +26,7 @@ def test_generated_feedstock_uses_record_and_replay_shape(feedstock: Feedstock) 
     assert "await " not in build
     # The SDK is a beta on PyPI, so the specifier names it
     # and nothing sources it from git.
-    assert '"bookshelf[publish,dataframes]>=1.0.0b1"' in pyproject
+    assert '"bookshelf[publish,dataframes]>=1.0.0b2"' in pyproject
     assert "[tool.uv.sources]" not in pyproject
     assert '"build.py" = [' in ruff
     assert '"E402"' in ruff

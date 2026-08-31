@@ -32,7 +32,13 @@ raw_data.head()
 # TODO: Replace this with the real transform.
 
 # %%
-processed_data = raw_data.assign(value=raw_data["value"] * 2)
+# A timeseries is stored wide, one column per year, so the long input is pivoted.
+processed_data = (
+    raw_data.assign(value=raw_data["value"] * 2)
+    .pivot(index=["region", "dataset"], columns="year", values="value")
+    .reset_index()
+)
+processed_data.columns = [str(column) for column in processed_data.columns]
 
 # %% [markdown]
 # # Publish
