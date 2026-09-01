@@ -69,6 +69,16 @@ Each takes `--json` for a machine readable summary, and carries its meaning in t
 CI records every version `books:` declares, and the publish workflow replays every one of them.
 Publishing an unchanged book is idempotent, so a version that has not moved keeps its edition.
 
+### Crediting the data
+
+`volume.maintainers` are whoever runs this feedstock, which is a contact rather than a credit.
+`authors` credit whoever produced the data,
+so a feedstock that reproduces somebody else's dataset names them.
+
+A resource inherits no credit from its book, so each one states its own authors.
+A declared input states them under `resources:` in the recipe,
+and an output passes them to `build.book.write(...)` beside its description.
+
 ### Worked examples
 
 The SDK's [examples README](https://github.com/climate-resource/bookshelf/blob/main/examples/README.md)
@@ -97,9 +107,11 @@ the `build.ipynb` and `build.html` documents included.
 Pass `visibility=` on a single `build.book.write(...)` call to narrow that one resource,
 so a public book can still hold a member only your organisation may read.
 
-A `path:` input is catalogued as a pointer at that repository relative path.
-The platform never re-hosts it, so once the real upstream data is in place,
-move the resource to a `uri:` with the `sha256:` the fetch is checked against.
+A `path:` input is re-hosted, because a repository path is no address the platform can resolve.
+Its metadata links back to the commit the file was read at.
+Once the real upstream data is in place,
+move the resource to a `uri:` with the `sha256:` the fetch is checked against,
+and the platform catalogues it as a pointer instead.
 
 The recorded bundle also carries the executed script and notebook, so its bundle hash covers the build source.
 Any edit to `build.py`, a comment included, produces a new bundle hash.

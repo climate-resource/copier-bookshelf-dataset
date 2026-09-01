@@ -16,13 +16,20 @@ defaults:
   publisher: Climate Resource
   repository_url: https://github.com/climate-resource/bookshelf-ngfs-scenarios
   visibility: public
+  # `authors` credit whoever produced the data, so name the upstream team here
+  # once this feedstock reproduces somebody else's dataset.
   authors:
     - name: "Ren\u00e9e O\u0027Brien"
       email: renee.obrien@climate-resource.com
   resources:
     # A resource type never moves between books, so it is stated once here.
+    # A resource inherits no credit from its book, so it names its own authors.
     raw:
       type: tabular
+      description: The input this build reads, as it was published upstream.
+      authors:
+        - name: "Ren\u00e9e O\u0027Brien"
+          email: renee.obrien@climate-resource.com
 
 build:
   notebook: build.py

@@ -40,7 +40,40 @@ def test_generated_recipe_parses_and_round_trips_the_answers(
     assert recipe["defaults"]["description"] == feedstock.answers["dataset_description"]
     assert recipe["defaults"]["repository_url"] == feedstock.answers["project_url"]
     assert recipe["defaults"]["authors"] == [maintainer]
+    assert recipe["defaults"]["resources"]["raw"]["authors"] == [maintainer]
     assert recipe["build"]["notebook"] == "build.py"
+
+
+def test_generated_build_file_credits_the_output_it_writes(
+    feedstock: Feedstock,
+) -> None:
+    """A resource inherits no credit from its book.
+
+    So the output the build writes names its own authors.
+    """
+    tree = ast.parse(feedstock.read("build.py"))
+    writes = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "write"
+    ]
+    authors = [
+        ast.literal_eval(keyword.value)
+        for call in writes
+        for keyword in call.keywords
+        if keyword.arg == "authors"
+    ]
+
+    assert authors == [
+        [
+            {
+                "name": feedstock.answers["author"],
+                "email": feedstock.answers["author_email"],
+            }
+        ]
+    ]
 
 
 def test_generated_workflows_parse(feedstock: Feedstock) -> None:
