@@ -20,6 +20,7 @@ build = bookshelf.setup()
 #
 # `build.use` resolves a resource named in the recipe,
 # and registers them as an input of this build.
+# The recipe states the authorship of `raw`, so nothing about it is repeated here.
 
 # %%
 raw = build.use("raw")
@@ -43,7 +44,21 @@ processed_data.columns = [str(column) for column in processed_data.columns]
 # %% [markdown]
 # # Publish
 #
+# The recipe never names what a build writes,
+# so an output states its own catalogue metadata here, credited to whoever derived it.
 
 # %%
-build.book.write("data", processed_data, type="timeseries", used=[raw])
+build.book.write(
+    "data",
+    processed_data,
+    type="timeseries",
+    used=[raw],
+    description="The processed output this build derives from `raw`.",
+    authors=[
+        {
+            "name": "Tim Slim",
+            "email": "timslim@climate-resource.com",
+        }
+    ],
+)
 build.book.publish()

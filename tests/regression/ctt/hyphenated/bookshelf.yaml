@@ -16,13 +16,20 @@ defaults:
   publisher: Climate Resource
   repository_url: https://github.com/climate-resource/bookshelf-primap-hist-2024
   visibility: public
+  # `authors` credit whoever produced the data, so name the upstream team here
+  # once this feedstock reproduces somebody else's dataset.
   authors:
     - name: "Ada Lovelace"
       email: ada.lovelace@climate-resource.com
   resources:
     # A resource type never moves between books, so it is stated once here.
+    # A resource inherits no credit from its book, so it names its own authors.
     raw:
       type: tabular
+      description: The input this build reads, as it was published upstream.
+      authors:
+        - name: "Ada Lovelace"
+          email: ada.lovelace@climate-resource.com
 
 build:
   notebook: build.py

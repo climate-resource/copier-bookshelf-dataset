@@ -13,10 +13,9 @@ def test_generated_feedstock_uses_record_and_replay_shape(feedstock: Feedstock) 
     assert "import bookshelf" in build
     assert "build = bookshelf.setup()" in build
     assert 'raw = build.use("raw")' in build
-    assert (
-        'build.book.write("data", processed_data, type="timeseries", used=[raw])'
-        in build
-    )
+    assert 'build.book.write(\n    "data",\n    processed_data,' in build
+    assert 'type="timeseries",' in build
+    assert "used=[raw]," in build
     assert "build.book.publish()" in build
     # The recipe states the version and the visibility, so the build file does not.
     assert "version =" not in build
@@ -26,7 +25,7 @@ def test_generated_feedstock_uses_record_and_replay_shape(feedstock: Feedstock) 
     assert "await " not in build
     # The SDK is a beta on PyPI, so the specifier names it
     # and nothing sources it from git.
-    assert '"bookshelf[publish,dataframes]>=1.0.0b2"' in pyproject
+    assert '"bookshelf[publish,dataframes]>=1.0.0b3"' in pyproject
     assert "[tool.uv.sources]" not in pyproject
     assert '"build.py" = [' in ruff
     assert '"E402"' in ruff
