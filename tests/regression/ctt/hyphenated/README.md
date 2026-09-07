@@ -17,6 +17,14 @@ That does the `git init`, sets the origin remote, writes `uv.lock` and makes the
 Recording derives provenance from git, so it needs all three.
 The target is guarded, so re-running it on an existing repository changes nothing.
 
+Once the repository is on GitHub, give it the `bookshelf-feedstock` topic:
+
+```bash
+   gh repo edit --add-topic bookshelf-feedstock
+```
+
+That topic is how every feedstock is found.
+
 Install the local virtual environment:
 
 ```bash

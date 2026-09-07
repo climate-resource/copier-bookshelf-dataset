@@ -39,6 +39,14 @@ Then run `make initial-setup` inside the new repository.
 This does the `git init`, sets the origin remote, writes `uv.lock` and makes the first commit.
 Recording derives provenance from git, so it needs all three.
 
+Once the repository is on GitHub, give it the `bookshelf-feedstock` topic:
+
+```bash
+gh repo edit climate-resource/$my_new_repo --add-topic bookshelf-feedstock
+```
+
+That topic is how every feedstock is found: `gh search repos --owner climate-resource --topic bookshelf-feedstock`.
+
 The template declares no Copier tasks, so plain `copier copy` and `copier update` work
 without `--trust`, and Renovate can apply template updates to a feedstock on its own.
 A generated feedstock ships a `renovate.json` with the Copier manager switched on.
