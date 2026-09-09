@@ -6,6 +6,8 @@ The [interactive prototype](publication-workflows.html?variant=merge) opens with
 
 This document is an implementation contract. The artifact simulates it; production workflows and repository rules have not been changed.
 
+The [research and implementation plan](../../docs/design/pr-publication.md) consolidates the decisions, including building the PR merged with pinned main, and defines the implementation sequence. It is the current source for the complete design. This document supplies the earlier check/comment detail.
+
 ## Required check
 
 Proposed stable name: `Bookshelf / validate publication`.
@@ -24,7 +26,7 @@ The aggregate check must run even if an upstream job failed. It explicitly requi
 
 Configure this check as required in the repository ruleset or branch protection and select its trusted producer where supported. Merely adding a workflow does not enforce merge blocking. GitHub accepts `success`, `skipped` and `neutral` for required checks, which is why the aggregate must explicitly enforce the successful-book condition. Checks must apply to the latest relevant commit. See [GitHub's required-check troubleshooting](https://docs.github.com/en/enterprise-cloud%40latest/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks) and [protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
 
-Decide explicitly whether preview content is built from the PR head or the synthetic merge commit. Record both identities where applicable. If a merge queue is enabled, support its validation event too. Publishing must verify the actual merged output against the reviewed content.
+Build the PR merged with pinned current `origin/main`. Record the PR head, main revision and merged candidate tree. A change to either Git input invalidates current readiness and requires a new build. If a merge queue is enabled, support its validation event too. Publishing must verify the actual merged output against the reviewed content.
 
 ## One review comment
 

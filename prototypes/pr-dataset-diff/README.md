@@ -6,6 +6,8 @@ The follow-up direction is to integrate previews into Bookshelf. Open the [three
 
 The selected initial workflow is [merge-to-publish with a required check and review comment](merge-publication-v1.md).
 
+The complete [research and implementation plan](../../docs/design/pr-publication.md) includes the merged-candidate policy, publication races, multi-volume support and acceptance criteria.
+
 ## Recommendation
 
 Start with an offline report generated from two recorded bundles. Upload the HTML and a machine-readable comparison as GitHub Actions artifacts, and put a short summary in the job summary. This needs no Bookshelf write credentials or report hosting service.

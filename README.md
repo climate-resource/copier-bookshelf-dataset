@@ -67,6 +67,10 @@ documents every field a recipe can carry.
 
 ## Feedstock automation
 
+The [PR preview and merge-publication plan](docs/design/pr-publication.md) describes
+the agreed next workflow and implementation stages. It is not yet enabled;
+the automation below describes the current release-based publication path.
+
 A bundle holds one book, so each version is recorded into its own `bundle/<version>` directory.
 CI records every version the recipe declares, and the publish workflow replays every one of them.
 Publishing an unchanged book is idempotent, so a version that has not moved keeps its edition.
