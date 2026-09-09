@@ -2,6 +2,8 @@
 
 Throwaway exploration on `prototype/pr-dataset-diff`. No production template or workflow changes.
 
+The follow-up direction is to integrate previews into Bookshelf. Open the [three publication workflows](publication-workflows.html) and read their [design notes](publication-workflows.md). The offline-report recommendation below records the earlier exploration and is superseded by that direction.
+
 ## Recommendation
 
 Start with an offline report generated from two recorded bundles. Upload the HTML and a machine-readable comparison as GitHub Actions artifacts, and put a short summary in the job summary. This needs no Bookshelf write credentials or report hosting service.
