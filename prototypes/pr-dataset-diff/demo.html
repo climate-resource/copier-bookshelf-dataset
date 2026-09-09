@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bookshelf PR comparison prototype</title>
+<style>
+:root{font:16px/1.55 system-ui;color:#203344;background:#f3f5f7}body{max-width:1180px;margin:40px auto;padding:0 24px}h1{font-size:32px;margin-bottom:4px}h2{font-size:22px}h3{font-size:18px}.muted{color:#607080}.badge{font-size:12px;letter-spacing:.08em;color:#256c68;text-transform:uppercase}section,details.panel{background:white;border:1px solid #dce3e8;border-radius:8px;padding:20px;margin:18px 0}button,select,input{font:inherit;padding:6px 10px;border:1px solid #aabcc4;border-radius:4px;background:white}button{cursor:pointer}button.active{background:#1c6965;color:white}nav{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.cards{display:flex;flex-wrap:wrap;gap:12px}.card{background:#eaf2f1;padding:12px 20px;min-width:120px}.card strong{display:block;font-size:28px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;border-bottom:1px solid #e1e7eb;padding:10px;vertical-align:top;overflow-wrap:anywhere}th{color:#607080}code,pre{font:13px/1.5 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere}.scroll{overflow-x:auto}.warning{background:#fff1d3;padding:12px;border-left:4px solid #bf7b13}summary{cursor:pointer}label{display:inline-block;margin:8px 16px 8px 0}svg{display:block;width:100%;max-width:700px;height:210px}.small{font-size:13px}a{color:#12635d}
+</style>
+<body>
+<div class="badge">Throwaway prototype · offline · no uploads</div>
+<h1>What changed in this dataset?</h1>
+<p class="muted">Can two recorded bundles explain a PR without a running Bookshelf service? Explore the cases below, or open comparison JSON generated from your own bundles.</p>
+<nav id="scenarios" aria-label="Guided scenarios"></nav>
+<label>Open comparison JSON <input id="import" type="file" accept=".json"></label>
+<button id="download">Save comparison JSON</button>
+<div id="error" role="alert"></div>
+<section><h2 id="title"></h2><p id="note"></p><div id="identity"></div>
+<label>Absolute tolerance <input id="atol" type="number" min="0" step="0.000001" value="0"></label>
+<label>Relative tolerance <input id="rtol" type="number" min="0" step="0.001" value="0"></label>
+<p class="small muted">Exact counts stay visible. A finite numeric change is material when |new − old| &gt; absolute tolerance + relative tolerance × |old|. Nulls and structural changes are always shown.</p>
+<div id="summary" class="cards"></div></section>
+<section><h2>Book metadata</h2><div id="metadata"></div></section>
+<section><h2>Resources and data</h2><p class="small muted">Resources match by name. Rows match by the displayed dimension keys. Units are part of timeseries identity. Tables show at most 200 differences; counts use every loaded row.</p><div id="resources"></div></section>
+<details class="panel"><summary>Build provenance and writer changes</summary><div id="provenance"></div></details>
+<details class="panel"><summary>Full comparison inputs</summary><pre id="raw"></pre></details>
+<p class="small muted">Prototype limits: full inputs are held in memory; annual wide timeseries are inferred, other tables need explicit keys. No unit conversion, geographic diff, or server connection. The JSON import demonstrates a possible frontend contract; it is not an existing Bookshelf endpoint.</p>
+<script>
+// Pure comparison module. No DOM or network access.
+const stable = x => x === undefined ? 'undefined' : JSON.stringify(x, (_,v) => v && !Array.isArray(v) && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])) : v);
+const equal = (a,b) => stable(a) === stable(b);
+function fields(a,b,path='') {
+  if(equal(a,b)) return [];
+  if(a && b && !Array.isArray(a) && !Array.isArray(b) && typeof a==='object' && typeof b==='object')
+    return [...new Set([...Object.keys(a),...Object.keys(b)])].sort().flatMap(k=>fields(a[k],b[k],path+'/'+k));
+  return [{field:path || '/',before:a,after:b}];
+}
+function metadata(m) {
+  const {processing,...book}=m.book || {};
+  if(book.entries) book.entries=Object.fromEntries(book.entries.map(e=>[e.name,e]));
+  return book;
+}
+function provenance(m) {return {activity:m.activity,writer:m.writer,processing:m.book?.processing,schema_version:m.schema_version};}
+function compareTable(a,b,atol,rtol) {
+  if(!a || !b) return {status:'Content unavailable on one side'};
+  if(a.unavailable || b.unavailable) return {status:[...new Set([a.unavailable,b.unavailable].filter(Boolean))].join('; '),schema:fields(a.columns,b.columns)};
+  if(!equal(a.keys,b.keys)) return {status:'Identity columns changed: choose a common key mapping before comparing values'};
+  const schema=fields(a.columns,b.columns), keys=a.keys;
+  const index=t=>new Map(t.rows.map(r=>[stable(keys.map(k=>r[k])),r]));
+  const old=index(a), now=index(b);
+  if(old.size!==a.rows.length || now.size!==b.rows.length) return {status:'Ambiguous: duplicate row identities. No numeric comparison performed.',schema};
+  const added=[...now.keys()].filter(k=>!old.has(k)), removed=[...old.keys()].filter(k=>!now.has(k));
+  const cells=[]; let exact=0, material=0, missing=0;
+  for(const [key,row] of now) {
+    if(!old.has(key)) continue;
+    const previous=old.get(key);
+    for(const col of new Set([...Object.keys(previous),...Object.keys(row)])) {
+      if(keys.includes(col) || equal(previous[col],row[col])) continue;
+      const x=previous[col], y=row[col];
+      const numeric=typeof x==='number' && typeof y==='number' && Number.isFinite(x) && Number.isFinite(y);
+      const delta=numeric?y-x:undefined, percent=numeric && x!==0?100*(y-x)/Math.abs(x):undefined;
+      const important=!numeric || Math.abs(delta)>atol+rtol*Math.abs(x);
+      exact++; material+=Number(important); missing+=Number(y===null && x!==null && x!==undefined);
+      cells.push({identity:key,column:col,before:x,after:y,delta,percent,material:important});
+    }
+  }
+  return {status:'Compared',keys,key_source:a.key_source,schema,added,removed,cells,exact,material,missing,old,now};
+}
+function compare(report,atol=0,rtol=0) {
+  if(!report.before) return {missing:true,resources:[]};
+  const a=report.before,b=report.after;
+  const old=new Map((a.manifest.resources||[]).map(r=>[r.name,r])), now=new Map((b.manifest.resources||[]).map(r=>[r.name,r]));
+  const resources=[...new Set([...old.keys(),...now.keys()])].sort().map(name=>{
+    const x=old.get(name),y=now.get(name);
+    if(!x || !y) return {name,membership:x?'Removed':'Added',metadata:fields(x,y)};
+    const strip=r=>Object.fromEntries(Object.entries(r).filter(([k])=>!['hash','size'].includes(k)));
+    return {name,membership:'Matched',bytes:x.hash===y.hash?'Same hash':'Different hash',metadata:fields(strip(x),strip(y)),table: x.type!==y.type ? {status:'Resource type changed: no value comparison'} : compareTable(a.tables[name],b.tables[name],atol,rtol)};
+  });
+  return {metadata:fields(metadata(a.manifest),metadata(b.manifest)),provenance:fields(provenance(a.manifest),provenance(b.manifest)),resources};
+}
+</script>
+<script>
+const scenarios = {"No data change": {"schema_version": "prototype-1", "baseline": "Synthetic PR base", "candidate": "Synthetic PR head", "note": "Provenance changes alone should not look like a data revision.", "before": {"manifest": {"schema_version": "3.2", "book": {"volume": "demo-emissions", "version": "v1.0.0", "description": "Illustrative data, not a published dataset", "license": "CC-BY-4.0", "entries": [{"name": "emissions"}]}, "activity": {"code_ref": "demo-base"}, "resources": [{"name": "emissions", "type": "timeseries", "hash": "demo-before", "visibility": "public"}]}, "tables": {"emissions": {"keys": ["region", "scenario", "unit"], "key_source": "Demo dimensions", "columns": {"region": "string", "scenario": "string", "unit": "string", "2020": "double", "2030": "double", "2050": "double"}, "rows": [{"region": "World", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 100.0, "2030": 90.0, "2050": 50.0}, {"region": "Europe", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 20.0, "2030": 15.0, "2050": 5.0}]}}}, "after": {"manifest": {"schema_version": "3.2", "book": {"volume": "demo-emissions", "version": "v1.0.0", "description": "Illustrative data, not a published dataset", "license": "CC-BY-4.0", "entries": [{"name": "emissions"}]}, "activity": {"code_ref": "demo-head"}, "resources": [{"name": "emissions", "type": "timeseries", "hash": "demo-before", "visibility": "public"}]}, "tables": {"emissions": {"keys": ["region", "scenario", "unit"], "key_source": "Demo dimensions", "columns": {"region": "string", "scenario": "string", "unit": "string", "2020": "double", "2030": "double", "2050": "double"}, "rows": [{"region": "World", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 100.0, "2030": 90.0, "2050": 50.0}, {"region": "Europe", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 20.0, "2030": 15.0, "2050": 5.0}]}}}}, "Metadata only": {"schema_version": "prototype-1", "baseline": "Synthetic PR base", "candidate": "Synthetic PR head", "note": "The license changed; the values are identical.", "before": {"manifest": {"schema_version": "3.2", "book": {"volume": "demo-emissions", "version": "v1.0.0", "description": "Illustrative data, not a published dataset", "license": "CC-BY-4.0", "entries": [{"name": "emissions"}]}, "activity": {"code_ref": "demo-base"}, "resources": [{"name": "emissions", "type": "timeseries", "hash": "demo-before", "visibility": "public"}]}, "tables": {"emissions": {"keys": ["region", "scenario", "unit"], "key_source": "Demo dimensions", "columns": {"region": "string", "scenario": "string", "unit": "string", "2020": "double", "2030": "double", "2050": "double"}, "rows": [{"region": "World", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 100.0, "2030": 90.0, "2050": 50.0}, {"region": "Europe", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 20.0, "2030": 15.0, "2050": 5.0}]}}}, "after": {"manifest": {"schema_version": "3.2", "book": {"volume": "demo-emissions", "version": "v1.0.0", "description": "Illustrative data, not a published dataset", "license": "CC0-1.0", "entries": [{"name": "emissions"}]}, "activity": {"code_ref": "demo-head"}, "resources": [{"name": "emissions", "type": "timeseries", "hash": "demo-before", "visibility": "public"}]}, "tables": {"emissions": {"keys": ["region", "scenario", "unit"], "key_source": "Demo dimensions", "columns": {"region": "string", "scenario": "string", "unit": "string", "2020": "double", "2030": "double", "2050": "double"}, "rows": [{"region": "World", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 100.0, "2030": 90.0, "2050": 50.0}, {"region": "Europe", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 20.0, "2030": 15.0, "2050": 5.0}]}}}}, "Values and coverage": {"schema_version": "prototype-1", "baseline": "Synthetic PR base", "candidate": "Synthetic PR head", "note": "One value rises 10%, one becomes null, and one region is added.", "before": {"manifest": {"schema_version": "3.2", "book": {"volume": "demo-emissions", "version": "v1.0.0", "description": "Illustrative data, not a published dataset", "license": "CC-BY-4.0", "entries": [{"name": "emissions"}]}, "activity": {"code_ref": "demo-base"}, "resources": [{"name": "emissions", "type": "timeseries", "hash": "demo-before", "visibility": "public"}]}, "tables": {"emissions": {"keys": ["region", "scenario", "unit"], "key_source": "Demo dimensions", "columns": {"region": "string", "scenario": "string", "unit": "string", "2020": "double", "2030": "double", "2050": "double"}, "rows": [{"region": "World", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 100.0, "2030": 90.0, "2050": 50.0}, {"region": "Europe", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 20.0, "2030": 15.0, "2050": 5.0}]}}}, "after": {"manifest": {"schema_version": "3.2", "book": {"volume": "demo-emissions", "version": "v1.0.0", "description": "Illustrative data, not a published dataset", "license": "CC-BY-4.0", "entries": [{"name": "emissions"}]}, "activity": {"code_ref": "demo-head"}, "resources": [{"name": "emissions", "type": "timeseries", "hash": "demo-revised", "visibility": "public"}]}, "tables": {"emissions": {"keys": ["region", "scenario", "unit"], "key_source": "Demo dimensions", "columns": {"region": "string", "scenario": "string", "unit": "string", "2020": "double", "2030": "double", "2050": "double"}, "rows": [{"region": "World", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 100.0, "2030": 99.0, "2050": 50.0}, {"region": "Europe", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 20.0, "2030": 15.0, "2050": null}, {"region": "Asia", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 40.0, "2030": 35.0, "2050": 25.0}]}}}}, "Reordered rows": {"schema_version": "prototype-1", "baseline": "Synthetic PR base", "candidate": "Synthetic PR head", "note": "Row order and byte hash change, but observations stay the same.", "before": {"manifest": {"schema_version": "3.2", "book": {"volume": "demo-emissions", "version": "v1.0.0", "description": "Illustrative data, not a published dataset", "license": "CC-BY-4.0", "entries": [{"name": "emissions"}]}, "activity": {"code_ref": "demo-base"}, "resources": [{"name": "emissions", "type": "timeseries", "hash": "demo-before", "visibility": "public"}]}, "tables": {"emissions": {"keys": ["region", "scenario", "unit"], "key_source": "Demo dimensions", "columns": {"region": "string", "scenario": "string", "unit": "string", "2020": "double", "2030": "double", "2050": "double"}, "rows": [{"region": "World", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 100.0, "2030": 90.0, "2050": 50.0}, {"region": "Europe", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 20.0, "2030": 15.0, "2050": 5.0}]}}}, "after": {"manifest": {"schema_version": "3.2", "book": {"volume": "demo-emissions", "version": "v1.0.0", "description": "Illustrative data, not a published dataset", "license": "CC-BY-4.0", "entries": [{"name": "emissions"}]}, "activity": {"code_ref": "demo-head"}, "resources": [{"name": "emissions", "type": "timeseries", "hash": "demo-reordered", "visibility": "public"}]}, "tables": {"emissions": {"keys": ["region", "scenario", "unit"], "key_source": "Demo dimensions", "columns": {"region": "string", "scenario": "string", "unit": "string", "2020": "double", "2030": "double", "2050": "double"}, "rows": [{"region": "Europe", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 20.0, "2030": 15.0, "2050": 5.0}, {"region": "World", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 100.0, "2030": 90.0, "2050": 50.0}]}}}}, "Unit change": {"schema_version": "prototype-1", "baseline": "Synthetic PR base", "candidate": "Synthetic PR head", "note": "Changing units removes and adds series; their values cannot be subtracted.", "before": {"manifest": {"schema_version": "3.2", "book": {"volume": "demo-emissions", "version": "v1.0.0", "description": "Illustrative data, not a published dataset", "license": "CC-BY-4.0", "entries": [{"name": "emissions"}]}, "activity": {"code_ref": "demo-base"}, "resources": [{"name": "emissions", "type": "timeseries", "hash": "demo-before", "visibility": "public"}]}, "tables": {"emissions": {"keys": ["region", "scenario", "unit"], "key_source": "Demo dimensions", "columns": {"region": "string", "scenario": "string", "unit": "string", "2020": "double", "2030": "double", "2050": "double"}, "rows": [{"region": "World", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 100.0, "2030": 90.0, "2050": 50.0}, {"region": "Europe", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 20.0, "2030": 15.0, "2050": 5.0}]}}}, "after": {"manifest": {"schema_version": "3.2", "book": {"volume": "demo-emissions", "version": "v1.0.0", "description": "Illustrative data, not a published dataset", "license": "CC-BY-4.0", "entries": [{"name": "emissions"}]}, "activity": {"code_ref": "demo-head"}, "resources": [{"name": "emissions", "type": "timeseries", "hash": "demo-changed", "visibility": "public"}]}, "tables": {"emissions": {"keys": ["region", "scenario", "unit"], "key_source": "Demo dimensions", "columns": {"region": "string", "scenario": "string", "unit": "string", "2020": "double", "2030": "double", "2050": "double"}, "rows": [{"region": "World", "scenario": "Reference", "unit": "Gt CO2/yr", "2020": 100.0, "2030": 90.0, "2050": 50.0}, {"region": "Europe", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 20.0, "2030": 15.0, "2050": 5.0}]}}}}, "Duplicate identity": {"schema_version": "prototype-1", "baseline": "Synthetic PR base", "candidate": "Synthetic PR head", "note": "Ambiguous row keys must stop the value comparison.", "before": {"manifest": {"schema_version": "3.2", "book": {"volume": "demo-emissions", "version": "v1.0.0", "description": "Illustrative data, not a published dataset", "license": "CC-BY-4.0", "entries": [{"name": "emissions"}]}, "activity": {"code_ref": "demo-base"}, "resources": [{"name": "emissions", "type": "timeseries", "hash": "demo-before", "visibility": "public"}]}, "tables": {"emissions": {"keys": ["region", "scenario", "unit"], "key_source": "Demo dimensions", "columns": {"region": "string", "scenario": "string", "unit": "string", "2020": "double", "2030": "double", "2050": "double"}, "rows": [{"region": "World", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 100.0, "2030": 90.0, "2050": 50.0}, {"region": "Europe", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 20.0, "2030": 15.0, "2050": 5.0}]}}}, "after": {"manifest": {"schema_version": "3.2", "book": {"volume": "demo-emissions", "version": "v1.0.0", "description": "Illustrative data, not a published dataset", "license": "CC-BY-4.0", "entries": [{"name": "emissions"}]}, "activity": {"code_ref": "demo-head"}, "resources": [{"name": "emissions", "type": "timeseries", "hash": "demo-changed", "visibility": "public"}]}, "tables": {"emissions": {"keys": ["region", "scenario", "unit"], "key_source": "Demo dimensions", "columns": {"region": "string", "scenario": "string", "unit": "string", "2020": "double", "2030": "double", "2050": "double"}, "rows": [{"region": "World", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 100.0, "2030": 90.0, "2050": 50.0}, {"region": "Europe", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 20.0, "2030": 15.0, "2050": 5.0}, {"region": "World", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 100.0, "2030": 90.0, "2050": 50.0}]}}}}, "Missing baseline": {"schema_version": "prototype-1", "baseline": "Synthetic PR base", "candidate": "Synthetic PR head", "note": "No baseline means no comparison. It must not be reported as zero changes.", "before": null, "after": {"manifest": {"schema_version": "3.2", "book": {"volume": "demo-emissions", "version": "v1.0.0", "description": "Illustrative data, not a published dataset", "license": "CC-BY-4.0", "entries": [{"name": "emissions"}]}, "activity": {"code_ref": "demo-head"}, "resources": [{"name": "emissions", "type": "timeseries", "hash": "demo-before", "visibility": "public"}]}, "tables": {"emissions": {"keys": ["region", "scenario", "unit"], "key_source": "Demo dimensions", "columns": {"region": "string", "scenario": "string", "unit": "string", "2020": "double", "2030": "double", "2050": "double"}, "rows": [{"region": "World", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 100.0, "2030": 90.0, "2050": 50.0}, {"region": "Europe", "scenario": "Reference", "unit": "Mt CO2/yr", "2020": 20.0, "2030": 15.0, "2050": 5.0}]}}}}};
+let current;
+const $=id=>document.getElementById(id);
+const show=x=>x===undefined?'Absent':x===null?'null':typeof x==='object'?stable(x):String(x);
+function el(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;}
+function table(parent,headers,rows){
+  if(!rows.length){parent.append(el('p','No changes.','muted'));return;}
+  const wrapper=el('div',undefined,'scroll'),t=el('table'),head=el('tr'); headers.forEach(h=>head.append(el('th',h)));t.append(head);
+  rows.slice(0,200).forEach(row=>{const tr=el('tr');row.forEach(v=>tr.append(el('td',show(v))));t.append(tr);});wrapper.append(t);parent.append(wrapper);
+  if(rows.length>200)parent.append(el('p',`Showing 200 of ${rows.length} rows.`));
+}
+function diffs(parent,changes){table(parent,['Field','Before','After'],changes.map(d=>[d.field,d.before,d.after]));}
+function details(parent,label){const d=el('details'),s=el('summary',label);d.append(s);parent.append(d);return d;}
+function plot(parent,t){
+  const candidates=[...t.now.keys()].filter(k=>t.old.has(k));
+  const years=[...new Set([...Object.keys(t.old.get(candidates[0])||{}),...Object.keys(t.now.get(candidates[0])||{})])].filter(k=>/^\d{4}$/.test(k)).sort();
+  if(!years.length || !candidates.length)return;
+  const label=el('label','Inspect series '),select=el('select');
+  candidates.slice(0,200).forEach(k=>{const option=el('option',k);option.value=k;select.append(option);});label.append(select);parent.append(label);
+  const chart=el('div');parent.append(chart);
+  function draw(){
+    chart.replaceChildren();const key=select.value,old=t.old.get(key),now=t.now.get(key);
+    const all=years.flatMap(y=>[old[y],now[y]]).filter(v=>typeof v==='number'&&Number.isFinite(v));if(!all.length)return;
+    const lo=Math.min(...all),hi=Math.max(...all),ns='http://www.w3.org/2000/svg';
+    const svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 700 210');svg.setAttribute('role','img');svg.setAttribute('aria-label','Before and after values over years');
+    const make=(tag,attrs)=>{const e=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);svg.append(e);return e;};
+    for(const [row,color] of [[old,'#8a9cac'],[now,'#166f68']]){
+      let previous;
+      years.forEach((year,i)=>{const value=row[year];if(typeof value!=='number'||!Number.isFinite(value)){previous=undefined;return;}
+        const x=55+i*600/Math.max(1,years.length-1),y=170-(value-lo)*140/(hi-lo||1);
+        if(previous)make('line',{x1:previous[0],y1:previous[1],x2:x,y2:y,stroke:color,'stroke-width':2});
+        make('circle',{cx:x,cy:y,r:4,fill:color});previous=[x,y];
+      });
+    }
+    years.forEach((year,i)=>{if(i===0||i===years.length-1)make('text',{x:55+i*600/Math.max(1,years.length-1),y:200,'text-anchor':'middle',fill:'#607080'}).textContent=year;});
+    make('text',{x:0,y:28,fill:'#607080'}).textContent=hi.toPrecision(4);make('text',{x:0,y:176,fill:'#607080'}).textContent=lo.toPrecision(4);
+    chart.append(svg,el('p','Gray: before · Green: after. Missing values break the line.','small muted'));
+  }select.onchange=draw;draw();
+}
+function render(){
+  if(!current)return;
+  const atol=Math.max(0,Number($('atol').value)||0),rtol=Math.max(0,Number($('rtol').value)||0),result=compare(current,atol,rtol);
+  for(const id of ['identity','summary','metadata','resources','provenance'])$(id).replaceChildren();
+  $('title').textContent=`${current.after.manifest.book?.volume||'Bundle'} · ${current.after.manifest.book?.version||'No book'}`;
+  $('note').textContent=current.note;
+  $('identity').append(el('p',`Before: ${current.baseline} → After: ${current.candidate}`));
+  table($('identity'),['Build','Code reference'],[['Before',current.before?.manifest.activity?.code_ref],['After',current.after.manifest.activity?.code_ref]]);
+  $('raw').textContent=JSON.stringify(current,null,2);
+  if(result.missing){$('summary').append(el('p','Baseline unavailable. Candidate inventory only; change counts cannot be computed.','warning'));table($('resources'),['Candidate resource','Type'],(current.after.manifest.resources||[]).map(r=>[r.name,r.type]));return;}
+  const tables=result.resources.map(r=>r.table).filter(Boolean),sum=k=>tables.reduce((n,t)=>n+(t[k]||0),0);
+  for(const [label,n] of [['Book fields',result.metadata.length],['Exact cell changes',sum('exact')],['Above tolerance / nonnumeric',sum('material')],['New nulls',sum('missing')],['Uncompared resources',tables.filter(t=>t.status!=='Compared').length]]){
+    const card=el('div',undefined,'card');card.append(el('strong',String(n)),el('span',label));$('summary').append(card);
+  }
+  diffs($('metadata'),result.metadata);diffs($('provenance'),result.provenance);
+  result.resources.forEach(r=>{
+    const box=el('section');box.append(el('h3',r.name),el('p',`${r.membership}${r.bytes?' · '+r.bytes:''}`));$('resources').append(box);
+    if(r.metadata.length)diffs(details(box,`${r.metadata.length} resource metadata changes`),r.metadata);
+    const t=r.table;if(!t)return;
+    if(t.status!=='Compared'){box.append(el('p',t.status,'warning'));if(t.schema)diffs(details(box,'Schema changes'),t.schema);return;}
+    box.append(el('p',`${t.added.length} rows added · ${t.removed.length} removed · ${t.exact} exact cell changes · ${t.material} material changes`));
+    box.append(el('p',`Keys: ${t.keys.join(', ')||'(one scalar row)'} · ${t.key_source}`,'small muted'));
+    if(r.bytes==='Different hash'&&!t.exact&&!t.added.length&&!t.removed.length&&!t.schema.length)box.append(el('p','Bytes changed; compared values and schema are identical.','warning'));
+    if(t.schema.length)diffs(details(box,'Schema changes'),t.schema);
+    if(t.added.length||t.removed.length)table(details(box,'Added and removed rows'),['Change','Identity'],[...t.added.map(k=>['Added',k]),...t.removed.map(k=>['Removed',k])]);
+    plot(box,t);
+    table(box,['Identity','Column','Before','After','Delta','Change %','Material'],t.cells.map(c=>[c.identity,c.column,c.before,c.after,c.delta,c.percent===undefined?'N/A':c.percent.toFixed(3),c.material?'Yes':'Below tolerance']));
+  });
+}
+for(const [name,report] of Object.entries(scenarios)){
+  const b=el('button',name);b.onclick=()=>{current=report;document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('atol').value=0;$('rtol').value=0;render();};$('scenarios').append(b);
+}
+$('import').onchange=async event=>{try{const report=JSON.parse(await event.target.files[0].text());if(report.schema_version!=='prototype-1'||!report.after?.manifest||!report.after?.tables)throw Error('Expected prototype-1 comparison JSON');current=report;render();$('error').textContent='';}catch(error){$('error').textContent=error.message;}};
+$('download').onclick=()=>{if(!current)return;const url=URL.createObjectURL(new Blob([JSON.stringify(current,null,2)],{type:'application/json'}));const a=el('a');a.href=url;a.download='comparison.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+$('atol').oninput=render;$('rtol').oninput=render;
+if(Object.keys(scenarios).length)$('scenarios').querySelector('button').click();else $('note').textContent='Open comparison JSON to begin.';
+</script></body></html>

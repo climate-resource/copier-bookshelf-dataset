@@ -1,0 +1,140 @@
+{
+  "schema_version": "prototype-1",
+  "baseline": "Synthetic PR base",
+  "candidate": "Synthetic PR head",
+  "note": "One value rises 10%, one becomes null, and one region is added.",
+  "before": {
+    "manifest": {
+      "schema_version": "3.2",
+      "book": {
+        "volume": "demo-emissions",
+        "version": "v1.0.0",
+        "description": "Illustrative data, not a published dataset",
+        "license": "CC-BY-4.0",
+        "entries": [
+          {
+            "name": "emissions"
+          }
+        ]
+      },
+      "activity": {
+        "code_ref": "demo-base"
+      },
+      "resources": [
+        {
+          "name": "emissions",
+          "type": "timeseries",
+          "hash": "demo-before",
+          "visibility": "public"
+        }
+      ]
+    },
+    "tables": {
+      "emissions": {
+        "keys": [
+          "region",
+          "scenario",
+          "unit"
+        ],
+        "key_source": "Demo dimensions",
+        "columns": {
+          "region": "string",
+          "scenario": "string",
+          "unit": "string",
+          "2020": "double",
+          "2030": "double",
+          "2050": "double"
+        },
+        "rows": [
+          {
+            "region": "World",
+            "scenario": "Reference",
+            "unit": "Mt CO2/yr",
+            "2020": 100.0,
+            "2030": 90.0,
+            "2050": 50.0
+          },
+          {
+            "region": "Europe",
+            "scenario": "Reference",
+            "unit": "Mt CO2/yr",
+            "2020": 20.0,
+            "2030": 15.0,
+            "2050": 5.0
+          }
+        ]
+      }
+    }
+  },
+  "after": {
+    "manifest": {
+      "schema_version": "3.2",
+      "book": {
+        "volume": "demo-emissions",
+        "version": "v1.0.0",
+        "description": "Illustrative data, not a published dataset",
+        "license": "CC-BY-4.0",
+        "entries": [
+          {
+            "name": "emissions"
+          }
+        ]
+      },
+      "activity": {
+        "code_ref": "demo-head"
+      },
+      "resources": [
+        {
+          "name": "emissions",
+          "type": "timeseries",
+          "hash": "demo-revised",
+          "visibility": "public"
+        }
+      ]
+    },
+    "tables": {
+      "emissions": {
+        "keys": [
+          "region",
+          "scenario",
+          "unit"
+        ],
+        "key_source": "Demo dimensions",
+        "columns": {
+          "region": "string",
+          "scenario": "string",
+          "unit": "string",
+          "2020": "double",
+          "2030": "double",
+          "2050": "double"
+        },
+        "rows": [
+          {
+            "region": "World",
+            "scenario": "Reference",
+            "unit": "Mt CO2/yr",
+            "2020": 100.0,
+            "2030": 99.0,
+            "2050": 50.0
+          },
+          {
+            "region": "Europe",
+            "scenario": "Reference",
+            "unit": "Mt CO2/yr",
+            "2020": 20.0,
+            "2030": 15.0,
+            "2050": null
+          },
+          {
+            "region": "Asia",
+            "scenario": "Reference",
+            "unit": "Mt CO2/yr",
+            "2020": 40.0,
+            "2030": 35.0,
+            "2050": 25.0
+          }
+        ]
+      }
+    }
+  }
+}
