@@ -2,6 +2,8 @@
 
 Open [publication-workflows.html](publication-workflows.html). This is a self-contained, interactive design artifact. It represents a future page inside Bookshelf, not a proposal to host standalone reports in production. It makes no network calls.
 
+Workflow 1 is now selected for the initial implementation, with a required build/validation check and a persistent review comment. See the [selected workflow contract](merge-publication-v1.md). The other two options remain in the artifact for later reference.
+
 The sample repository has four books across two volumes:
 
 | Volume | Version | Change |
@@ -35,14 +37,14 @@ Each published book retains its originating PR, repository, reviewed snapshot, s
 
 ## Decisions exposed by the prototype
 
-- Workflows 1 and 2 propose coordinated publication of the whole changed set. Cross-volume atomicity is a requirement to design, not an existing platform capability demonstrated here. Workflow 3 explicitly permits partial publication.
+- The selected initial workflow publishes the whole changed set and records per-book outcomes. It does not promise a cross-volume transaction; partial failures require idempotent retry. Workflow 3 also permits intentional partial publication.
 - All workflows block merge while any target fails validation. Workflow 2 additionally needs all current data approvals. A production repository could adopt a different policy, but this artifact chooses one concrete behaviour for comparison.
 - Merged output must match reviewed content. A merge conflict resolution or changed input that alters the result needs a new comparison. The prototype assumes equivalence when its merge button is pressed; it does not rebuild anything.
 - Published baseline editions must be checked again at promotion time. Another PR publishing first must not let an old proposal silently supersede newer data. Workflow 3 also needs protection against out-of-order staged publications. These concurrency cases are documented requirements rather than simulated operations.
 - Removed targets are withdrawn from the proposal, not deleted from Bookshelf. New volumes require an explicit creation policy. Preview access must honour the data's visibility independently of GitHub repository visibility.
 - UI approvals represent data sign-off. GitHub branch protection still decides who can merge. Existing frontend tables, charts and resource access should be reused in implementation; the embedded mock chart only makes this workflow artifact self-contained.
 
-I would start with workflow 1 and add workflow 2 where domain review is required. Workflow 3 is useful when publication timing differs across volumes, but it introduces a queue of merged work that someone must maintain. No workflow has been selected for production.
+Start with workflow 1. Formal Bookshelf approvals are deferred. Workflow 3 remains an option if publication timing later differs across volumes.
 
 ## Checked
 
