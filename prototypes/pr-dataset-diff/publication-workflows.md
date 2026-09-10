@@ -19,7 +19,7 @@ Each book has a data file and a metadata file. Select the book, then switch file
 
 **1. Merge publishes.** The author and reviewer work in GitHub. A check and a persistent comment link to the Bookshelf proposal. Every push uploads a preview. Merge publishes all changed, validated books together. This is the shortest path when GitHub approval is sufficient for both code and data review.
 
-**2. Review in Bookshelf.** Data owners inspect and approve each changed book on the Bookshelf page. Those approvals pass a proposed required GitHub check; merge then publishes the set. A push creates a new snapshot and resets the approvals. This makes sense when reviewers need data tools more than code tools.
+**2. Review in Bookshelf.** Data owners inspect and approve each changed book on the Bookshelf page. Those approvals pass a proposed required GitHub check; merge then publishes the set. A push creates a new preview and resets the approvals. This makes sense when reviewers need data tools more than code tools.
 
 **3. Curator publishes.** Merge accepts the work and stages the books. A curator chooses which volume/version targets to publish, potentially on different dates. Try merging, deselecting scenario-pathways v1.1, and publishing both primap-hist versions. The page records the partial outcome and keeps the deferred book visible.
 
@@ -29,11 +29,11 @@ The selector updates `?variant=merge`, `?variant=review` or `?variant=curate`, s
 
 A proposal belongs to `(repository, pull-request number)`. It contains targets keyed by `(volume, version)`, and each target contains named files. A repository is not treated as a single volume. Production recipe discovery needs to support that target collection explicitly.
 
-A push uploads an immutable content snapshot. The stable proposal URL follows the latest snapshot, while old review links remain pinned. The page offers comparisons against a pinned published edition, the PR base commit, and the previous push. A new version without a baseline is shown as added data, rather than compared implicitly against some other version.
+A push uploads an immutable content preview. The stable proposal URL follows the latest preview, while old review links remain pinned. The page offers comparisons against a pinned published edition, the PR base commit, and the previous push. A new version without a baseline is shown as added data, rather than compared implicitly against some other version.
 
-Preview publication is immediate on every push. Catalogue publication happens on merge or curator action, depending on the workflow. No GitHub release or tag is needed. The proposed UI keeps preview snapshots out of the catalogue's edition numbering; a changed book receives an edition when promoted, while an unchanged book retains its existing edition.
+Preview publication is immediate on every push. Catalogue publication happens on merge or curator action, depending on the workflow. No GitHub release or tag is needed. The proposed UI keeps preview previews out of the catalogue's edition numbering; a changed book receives an edition when promoted, while an unchanged book retains its existing edition.
 
-Each published book retains its originating PR, repository, reviewed snapshot, source commit and merge commit. The prototype's **View origin** link shows the return path. The mock GitHub PR includes the forward link back into Bookshelf. Preview-byte expiry should not erase these publication receipts.
+Each published book retains its originating PR, repository, reviewed preview, source commit and merge commit. The prototype's **View origin** link shows the return path. The mock GitHub PR includes the forward link back into Bookshelf. Preview-byte expiry should not erase these publication receipts.
 
 ## Decisions exposed by the prototype
 
@@ -48,7 +48,7 @@ Start with workflow 1. Formal Bookshelf approvals are deferred. Workflow 3 remai
 
 ## Checked
 
-Parsed both script blocks and checked that literal element references resolve. Executed the pure model for each workflow: the first two publish three changed books; the third can publish only the two historical versions. A new push clears approvals and retains prior snapshots. A validation failure and closing without merging both prevent publication. The unchanged version retains its existing edition.
+Parsed both script blocks and checked that literal element references resolve. Executed the pure model for each workflow: the first two publish three changed books; the third can publish only the two historical versions. A new push clears approvals and retains prior previews. A validation failure and closing without merging both prevent publication. The unchanged version retains its existing edition.
 
 Executed the rendering functions with lightweight element stubs for every combination of workflow, book, file and baseline. The partial-publication catalogue and provenance dialog produced the expected content. This checks JavaScript execution, not browser layout or native interaction.
 

@@ -33,20 +33,20 @@ Build the PR merged with pinned current `origin/main`. Record the PR head, main 
 Use a stable marker, for example `<!-- bookshelf-publication-preview -->`, to update the same bot-owned comment rather than post on every push. Verify both marker and author when locating it. Include:
 
 - The latest commit, workflow run and aggregate result.
-- A stable Bookshelf proposal link and an immutable link to this push's snapshot.
+- A stable Bookshelf proposal link and an immutable link to this push's preview.
 - One row per volume/version with build/validation status and a diff or failure link.
 - The pinned comparison baseline and enough metadata to distinguish new versions from revisions.
 - After merge, publication outcomes and links back to published editions.
 
-Publish an initial pending comment, update progress and failures, then update the final outcome. Never let completion of an older run overwrite the current-head summary. Preserve old snapshot links in Bookshelf history.
+Publish an initial pending comment, update progress and failures, then update the final outcome. Never let completion of an older run overwrite the current-head summary. Preserve old preview links in Bookshelf history.
 
 Comment delivery supports review; it is not a formal approval gate. If posting fails, expose that failure in the job summary and retry it without misreporting book validation. The required check retains a link to the preview as a fallback.
 
-Use a trusted GitHub integration or a separate reporting job for comment writes. Candidate build code must not receive the reporting or catalogue-publishing credentials. Fork PR support needs a deliberate trusted reporting path; increasing `GITHUB_TOKEN` permissions inside a fork build is not sufficient. GitHub documents [workflow permissions and fork restrictions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax).
+The Bookshelf platform owns the check and the comment through its GitHub App. Candidate build code uploads previews with a GitHub Actions OIDC token and holds no reporting or catalogue-publishing credential. Fork PRs are out of scope and receive a failed check that says why. GitHub documents [workflow permissions and fork restrictions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax).
 
 ## Merge publication
 
-On a verified PR merge, publish every changed target in the validated proposal. Match the merged content to the reviewed snapshot and recheck the pinned publication baseline. If either changed, rebuild and compare before publication. Do not read a mutable “latest preview” pointer and publish whatever it currently names.
+On PR merge, the platform publishes every changed target from the sealed preview that passed the check on the merged head. The feedstock ruleset requires branches to be up to date, so the merged content is the validated candidate. The pinned publication baseline is rechecked inside the write. Do not read a mutable “latest preview” pointer and publish whatever it currently names.
 
 Record the source repository, PR, candidate commit, merge commit, content identities and publication outcome per volume/version. Preserve these receipts after preview-byte expiry. An unchanged book keeps its existing edition. Repeated delivery of the merge event must not mint duplicate editions.
 
@@ -60,7 +60,7 @@ Formal data-owner approvals, review dismissal and selective curator publication 
 | --- | --- | --- |
 | Feedstock CI | `actions/record-bundle` records and validates every version in one recipe | Discover all volume/version targets, retain per-book outcomes, upload previews and aggregate results |
 | GitHub reporting | No PR preview comment in `.github/workflows/feedstock-ci.yaml` | Add trusted check/comment reporting tied to the latest commit |
-| Bookshelf platform | No preview comparison endpoint or page found in the inspected checkout | Store immutable proposal snapshots and render diffs using existing tables/charts |
+| Bookshelf platform | No preview comparison endpoint or page found in the inspected checkout | Store immutable proposal previews and render diffs using existing tables/charts |
 | Publish trigger | Generated `feedstock-publish.yaml` runs on published releases or manual dispatch | Publish from verified merge events with exact content and origin receipts |
 | Repository policy | Not inspected or changed remotely | Require the aggregate check in the relevant repository rules |
 
