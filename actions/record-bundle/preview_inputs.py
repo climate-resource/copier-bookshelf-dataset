@@ -15,16 +15,6 @@ from typing import Any
 NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
-def describe(target: dict[str, Any]) -> str:
-    """Name a target the way the job summary reports it."""
-    return f"{target.get('volume', '')} {target.get('version', '')}".strip()
-
-
-def artifact_directory(artifacts: Path, target: dict[str, Any]) -> Path:
-    """Where a target's artifact lands once a pattern download has fetched it."""
-    return artifacts / f"bookshelf-bundle-{target['volume']}-{target['version']}"
-
-
 def unsafe_targets(targets: list[Any]) -> list[str]:
     """Name the targets that are not an object with a plain volume and version."""
     return [
@@ -55,12 +45,12 @@ def resolve(
     bundles = []
     problems = []
     for target in targets:
-        artifact = artifact_directory(artifacts, target)
-        bundle = artifact / str(target["version"])
-        if bundle.is_dir():
-            bundles.append(bundle)
+        volume, version = target["volume"], target["version"]
+        artifact = artifacts / f"bookshelf-bundle-{volume}-{version}"
+        if (artifact / version).is_dir():
+            bundles.append(artifact / version)
         else:
-            problems.append(f"{describe(target)}: {no_bundle_reason(artifact)}")
+            problems.append(f"{volume} {version}: {no_bundle_reason(artifact)}")
     return bundles, problems
 
 
@@ -86,16 +76,15 @@ def main() -> None:
     args = parser.parse_args()
 
     targets = read_json(args.artifacts / "targets.json")
+    bundles: list[Path] = []
     if targets is None:
         problems = ["no target list was produced"]
     elif not isinstance(targets, list) or not targets:
         problems = ["the target list is empty or not a list"]
     else:
         problems = unsafe_targets(targets)
-
-    bundles: list[Path] = []
-    if not problems:
-        bundles, problems = resolve(args.artifacts, targets)
+        if not problems:
+            bundles, problems = resolve(args.artifacts, targets)
 
     if problems:
         report = not_uploaded_markdown(problems)

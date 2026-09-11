@@ -32,7 +32,6 @@ def lay_out(
     tmp_path: Path,
     versions: tuple[str, ...],
     status: str = "validated",
-    reason: str = "",
 ) -> Path:
     """Lay the artifacts out the way the download steps leave them."""
     artifacts = tmp_path / "artifacts"
@@ -45,7 +44,7 @@ def lay_out(
                 "volume": "example",
                 "version": version,
                 "status": status,
-                "reason": reason,
+                "reason": "",
             },
         )
         (artifact / version).mkdir(parents=True)
