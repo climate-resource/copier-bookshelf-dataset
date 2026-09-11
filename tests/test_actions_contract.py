@@ -127,6 +127,8 @@ def test_ci_records_one_target_per_matrix_leg() -> None:
         "${{ matrix.target.version }}" in workflow
     )
     assert "recipe: ${{ matrix.target.recipe }}" in workflow
+    # A re-run of a failed leg uploads under the name its first attempt already used.
+    assert workflow.count("overwrite: true") == workflow.count("upload-artifact@")
     assert "version: ${{ matrix.target.version }}" in workflow
 
 

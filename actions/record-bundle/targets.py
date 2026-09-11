@@ -26,15 +26,11 @@ def collect_targets(
     if not targets:
         raise ValueError("the recipes declare no books, so there is nothing to record")
 
-    repeated = [
-        f"{volume} {book}"
-        for (volume, book), count in Counter(
-            (target["volume"], target["version"]) for target in targets
-        ).items()
-        if count > 1
-    ]
+    # Each target uploads an artifact named `<volume>-<version>`, so it must be unique.
+    names = Counter(f"{target['volume']}-{target['version']}" for target in targets)
+    repeated = sorted(name for name, count in names.items() if count > 1)
     if repeated:
-        raise ValueError(f"more than one recipe declares {', '.join(repeated)}")
+        raise ValueError(f"more than one target is named {', '.join(repeated)}")
 
     return targets
 

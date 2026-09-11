@@ -46,7 +46,6 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
-          persist-credentials: false
 
       - name: Check out matching feedstock action
         uses: actions/checkout@v6
@@ -77,8 +76,8 @@ jobs:
             --arg head_sha "${HEAD_SHA}" \
             --arg main_sha "${MAIN_SHA}" \
             --arg candidate_tree "${CANDIDATE_TREE}" \
-            --arg run_id "${RUN_ID}" \
-            --arg run_attempt "${RUN_ATTEMPT}" \
+            --argjson run_id "${RUN_ID}" \
+            --argjson run_attempt "${RUN_ATTEMPT}" \
             --arg event "${EVENT}" \
             '$ARGS.named' > candidate.json
           cat candidate.json
@@ -89,6 +88,7 @@ jobs:
           name: bookshelf-candidate
           path: candidate.json
           if-no-files-found: error
+          overwrite: true
 
   targets:
     name: List the targets
@@ -102,7 +102,6 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
-          persist-credentials: false
 
       - name: Check out matching feedstock action
         uses: actions/checkout@v6
@@ -146,6 +145,7 @@ jobs:
           name: bookshelf-targets
           path: targets.json
           if-no-files-found: error
+          overwrite: true
 
   record:
     name: Record ${{ matrix.target.volume }} ${{ matrix.target.version }}
@@ -161,7 +161,6 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
-          persist-credentials: false
 
       - name: Check out matching feedstock action
         uses: actions/checkout@v6
@@ -195,6 +194,7 @@ jobs:
           name: bookshelf-bundle-${{ matrix.target.volume }}-${{ matrix.target.version }}
           path: bundle
           if-no-files-found: error
+          overwrite: true
 
   candidate-outcome:
     name: candidate outcome

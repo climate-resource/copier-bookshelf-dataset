@@ -75,20 +75,27 @@ Pass a `version` input to either reusable workflow to narrow that to one book.
 The CI workflow validates a candidate rather than whatever was checked out:
 
 - On a pull request, the candidate is the head merged with the current `main`.
-  The `candidate` job pins that `main` commit, and every later job rebuilds the same merge and checks it gets the same tree.
+  The `candidate` job pins that `main` commit,
+  and every later job rebuilds the same merge and checks it gets the same tree.
   A merge conflict fails the run rather than recording either side.
 - On any other event, the candidate is the commit being built.
-- The candidate identity (head SHA, main SHA and merged tree) is uploaded as the `bookshelf-candidate` artifact.
-- The `targets` job lists one target per `(volume, version)` across the `recipes` input (default `bookshelf.yaml`).
-  It uploads the list as `bookshelf-targets` and fails on an empty list or a target two recipes both declare.
+- The candidate identity is uploaded as the `bookshelf-candidate` artifact.
+  It holds the head SHA, the main SHA and the merged tree.
+- The `targets` job lists one target per `(volume, version)` across the `recipes` input.
+  The input defaults to `bookshelf.yaml`.
+  It uploads the list as `bookshelf-targets`.
+  It fails on an empty list or on a target that two recipes both declare.
 - The `record` job records and validates each target in its own matrix leg.
-  Each leg uploads `bookshelf-bundle-<volume>-<version>`, holding the bundle and an `outcome.json` that says `validated` or `failed`.
+  Each leg uploads `bookshelf-bundle-<volume>-<version>`,
+  holding the bundle and an `outcome.json` that says `validated` or `failed`.
 - The `candidate outcome` job always runs.
-  It passes only when every target has exactly one `validated` outcome and every job before it succeeded, so a skipped or cancelled leg counts as a failure.
+  It passes only when every target has exactly one `validated` outcome and every job before it succeeded,
+  so a skipped or cancelled leg counts as a failure.
   It writes a table of the outcomes to the job summary.
 
 None of these jobs holds a credential.
-The required check is the platform's `Bookshelf / validate publication`, not `candidate outcome`, and the platform posts the pull request comment and publishes.
+The required check is the platform's `Bookshelf / validate publication`, not `candidate outcome`.
+The platform also posts the pull request comment and publishes.
 A candidate is only as fresh as the `main` it was merged with,
 so readiness relies on the feedstock ruleset requiring branches to be up to date before merging.
 

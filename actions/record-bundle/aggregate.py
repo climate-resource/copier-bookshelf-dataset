@@ -47,7 +47,7 @@ class Report:
         return "\n".join(lines) + "\n"
 
 
-def key(entry: dict[str, Any]) -> Key:
+def target_key(entry: dict[str, Any]) -> Key:
     """Identify a target, or the outcome reported for one."""
     return (str(entry.get("volume", "")), str(entry.get("version", "")))
 
@@ -75,9 +75,9 @@ def aggregate(
 
     reported: dict[Key, list[dict[str, Any]]] = {}
     for outcome in outcomes:
-        reported.setdefault(key(outcome), []).append(outcome)
+        reported.setdefault(target_key(outcome), []).append(outcome)
 
-    expected = [key(target) for target in targets or []]
+    expected = [target_key(target) for target in targets or []]
     for volume, version in expected:
         found = reported.get((volume, version), [])
         if len(found) != 1:
@@ -88,7 +88,7 @@ def aggregate(
             reason = str(found[0].get("reason") or "")
         report.rows.append((volume, version, status, reason))
         if status != "validated":
-            report.problems.append(f"{volume} {version} is {status}")
+            report.problems.append(f"{volume} {version}: {status}")
 
     for volume, version in sorted(reported.keys() - set(expected)):
         report.rows.append((volume, version, "unexpected", "not in the target list"))

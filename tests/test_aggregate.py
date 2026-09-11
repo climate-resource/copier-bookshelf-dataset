@@ -52,7 +52,7 @@ def test_one_failed_target_is_not_ready() -> None:
 
     assert not report.ready
     assert ("example", "v2", "failed", "validate") in report.rows
-    assert "example v2 is failed" in report.problems
+    assert "example v2: failed" in report.problems
 
 
 def test_a_missing_outcome_is_not_ready() -> None:
@@ -60,7 +60,7 @@ def test_a_missing_outcome_is_not_ready() -> None:
     report = AGGREGATE.aggregate(TARGETS, [outcome("example", "v1")], ALL_PASSED)
 
     assert not report.ready
-    assert "example v2 is missing" in report.problems
+    assert "example v2: missing" in report.problems
 
 
 def test_an_unexpected_outcome_is_not_ready() -> None:
@@ -82,7 +82,7 @@ def test_a_duplicated_outcome_is_not_ready() -> None:
     )
 
     assert not report.ready
-    assert "example v2 is duplicated" in report.problems
+    assert "example v2: duplicated" in report.problems
 
 
 def test_an_empty_target_list_is_not_ready() -> None:

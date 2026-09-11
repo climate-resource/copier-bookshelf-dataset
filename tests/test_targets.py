@@ -78,7 +78,16 @@ def test_a_target_declared_twice_is_rejected(tmp_path: Path) -> None:
     first = write_recipe(tmp_path / "one.yaml", "example", ["v1", "v2"])
     second = write_recipe(tmp_path / "two.yaml", "example", ["v2"])
 
-    with pytest.raises(ValueError, match="example v2"):
+    with pytest.raises(ValueError, match="example-v2"):
+        TARGETS.collect_targets([first, second])
+
+
+def test_targets_whose_artifact_names_collide_are_rejected(tmp_path: Path) -> None:
+    """`a-b` at `c` and `a` at `b-c` would upload the same artifact."""
+    first = write_recipe(tmp_path / "one.yaml", "a-b", ["c"])
+    second = write_recipe(tmp_path / "two.yaml", "a", ["b-c"])
+
+    with pytest.raises(ValueError, match="a-b-c"):
         TARGETS.collect_targets([first, second])
 
 
