@@ -253,7 +253,6 @@ jobs:
             | tee -a "${GITHUB_STEP_SUMMARY}"
 
   # The one job that can mint the OIDC token, so it never runs a line of the pull request.
-  # It checks out this template's helpers alone and installs the SDK from an index.
   preview:
     name: upload preview
     if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
@@ -285,13 +284,6 @@ jobs:
           echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
 
       # A job that never ran leaves nothing to download, which the next step reports.
-      - name: Download the candidate identity
-        continue-on-error: true
-        uses: actions/download-artifact@v8
-        with:
-          name: bookshelf-candidate
-          path: artifacts
-
       - name: Download the target list
         continue-on-error: true
         uses: actions/download-artifact@v8
@@ -313,9 +305,13 @@ jobs:
             --artifacts artifacts \
             --summary "${GITHUB_STEP_SUMMARY}" >> "${GITHUB_ENV}"
 
+      # The identity comes from the event and the candidate job, which PR code cannot overwrite.
       - name: Upload the preview
         env:
           API_BASE_URL: ${{ inputs.api-base-url }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MAIN_SHA: ${{ needs.candidate.outputs.main-sha }}
+          CANDIDATE_TREE: ${{ needs.candidate.outputs.candidate-tree }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
@@ -332,9 +328,12 @@ jobs:
             --api-url "${API_BASE_URL}" \
             --json > preview.json
 
+      # A failed preview still exists, so its links are reported too.
       - name: Report the preview
+        if: ${{ !cancelled() && hashFiles('preview.json') != '' }}
         run: |
           set -euo pipefail
+          jq -e .preview_id preview.json > /dev/null || exit 0
           {
             echo "## Preview"
             echo
@@ -344,6 +343,7 @@ jobs:
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload the preview summary
+        if: ${{ !cancelled() && hashFiles('preview.json') != '' }}
         uses: actions/upload-artifact@v6
         with:
           name: bookshelf-preview

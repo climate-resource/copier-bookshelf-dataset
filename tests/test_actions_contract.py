@@ -161,9 +161,19 @@ def test_ci_uploads_the_preview_from_a_trusted_job() -> None:
     checkouts = [
         step for step in preview["steps"] if "actions/checkout" in step.get("uses", "")
     ]
-    assert [step["with"]["repository"] for step in checkouts] == [
-        "${{ job.workflow_repository }}"
-    ]
+    assert [
+        (step["with"]["repository"], step["with"]["ref"]) for step in checkouts
+    ] == [("${{ job.workflow_repository }}", "${{ job.workflow_sha }}")]
+
+    upload = next(
+        step for step in preview["steps"] if step["name"] == "Upload the preview"
+    )
+    assert upload["env"]["HEAD_SHA"] == "${{ github.event.pull_request.head.sha }}"
+    assert upload["env"]["MAIN_SHA"] == "${{ needs.candidate.outputs.main-sha }}"
+    assert (
+        upload["env"]["CANDIDATE_TREE"]
+        == "${{ needs.candidate.outputs.candidate-tree }}"
+    )
 
     assert "sdk-version:" in workflow
     assert "api-base-url:" in workflow

@@ -16,15 +16,6 @@ assert SPEC is not None and SPEC.loader is not None
 PREVIEW_INPUTS = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(PREVIEW_INPUTS)
 
-CANDIDATE = {
-    "head_sha": "1111111111111111111111111111111111111111",
-    "main_sha": "2222222222222222222222222222222222222222",
-    "candidate_tree": "3333333333333333333333333333333333333333",
-    "run_id": 42,
-    "run_attempt": 1,
-    "event": "pull_request",
-}
-
 TARGETS = [
     {"recipe": "bookshelf.yaml", "volume": "example", "version": "v1"},
     {"recipe": "bookshelf.yaml", "volume": "example", "version": "v2"},
@@ -38,17 +29,24 @@ def write_json(path: Path, value: Any) -> Path:
 
 
 def lay_out(
-    tmp_path: Path, versions: tuple[str, ...], status: str = "validated"
+    tmp_path: Path,
+    versions: tuple[str, ...],
+    status: str = "validated",
+    reason: str = "",
 ) -> Path:
     """Lay the artifacts out the way the download steps leave them."""
     artifacts = tmp_path / "artifacts"
-    write_json(artifacts / "candidate.json", CANDIDATE)
     write_json(artifacts / "targets.json", TARGETS)
     for version in versions:
         artifact = artifacts / f"bookshelf-bundle-example-{version}"
         write_json(
             artifact / "outcome.json",
-            {"volume": "example", "version": version, "status": status, "reason": ""},
+            {
+                "volume": "example",
+                "version": version,
+                "status": status,
+                "reason": reason,
+            },
         )
         (artifact / version).mkdir(parents=True)
     return artifacts
@@ -67,9 +65,9 @@ def run_script(*args: str) -> subprocess.CompletedProcess[str]:
 def test_every_target_with_a_bundle_resolves(tmp_path: Path) -> None:
     artifacts = lay_out(tmp_path, ("v1", "v2"))
 
-    bundles, missing = PREVIEW_INPUTS.resolve(artifacts, TARGETS)
+    bundles, problems = PREVIEW_INPUTS.resolve(artifacts, TARGETS)
 
-    assert not missing
+    assert not problems
     assert bundles == [
         artifacts / "bookshelf-bundle-example-v1" / "v1",
         artifacts / "bookshelf-bundle-example-v2" / "v2",
@@ -80,44 +78,43 @@ def test_a_failed_target_is_still_uploaded(tmp_path: Path) -> None:
     """The SDK fails the preview with the bundle's reason, so it needs the bundle."""
     artifacts = lay_out(tmp_path, ("v1", "v2"), status="failed")
 
-    bundles, missing = PREVIEW_INPUTS.resolve(artifacts, TARGETS)
+    bundles, problems = PREVIEW_INPUTS.resolve(artifacts, TARGETS)
 
-    assert not missing
+    assert not problems
     assert len(bundles) == 2
 
 
-def test_a_target_without_a_bundle_is_missing(tmp_path: Path) -> None:
+def test_a_target_without_an_artifact_has_no_bundle(tmp_path: Path) -> None:
     artifacts = lay_out(tmp_path, ("v1",))
 
-    bundles, missing = PREVIEW_INPUTS.resolve(artifacts, TARGETS)
+    bundles, problems = PREVIEW_INPUTS.resolve(artifacts, TARGETS)
 
-    assert missing == ["example v2"]
+    assert problems == ["example v2: no bundle was recorded"]
     assert len(bundles) == 1
 
 
-def test_the_identity_lines_are_exact(tmp_path: Path) -> None:
-    artifacts = lay_out(tmp_path, ("v1", "v2"))
-    bundles, _ = PREVIEW_INPUTS.resolve(artifacts, TARGETS)
+def test_a_record_that_died_early_reports_its_reason(tmp_path: Path) -> None:
+    """The record job writes an outcome even when it never lays a bundle out."""
+    artifacts = lay_out(tmp_path, ("v1",))
+    write_json(
+        artifacts / "bookshelf-bundle-example-v2" / "outcome.json",
+        {"volume": "example", "version": "v2", "status": "failed", "reason": "boom"},
+    )
 
-    lines = PREVIEW_INPUTS.environment_lines(CANDIDATE, bundles).splitlines()
+    _, problems = PREVIEW_INPUTS.resolve(artifacts, TARGETS)
 
-    assert lines[:3] == [
-        f"HEAD_SHA={CANDIDATE['head_sha']}",
-        f"MAIN_SHA={CANDIDATE['main_sha']}",
-        f"CANDIDATE_TREE={CANDIDATE['candidate_tree']}",
-    ]
-    assert lines[3] == f"BUNDLES={bundles[0]} {bundles[1]}"
+    assert problems == ["example v2: no bundle was recorded (boom)"]
 
 
-def test_the_script_prints_the_environment(tmp_path: Path) -> None:
+def test_the_script_prints_the_bundles(tmp_path: Path) -> None:
     artifacts = lay_out(tmp_path, ("v1", "v2"))
 
     result = run_script("--artifacts", str(artifacts))
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert f"HEAD_SHA={CANDIDATE['head_sha']}" in result.stdout
-    assert "bookshelf-bundle-example-v1/v1" in result.stdout
-    assert "bookshelf-bundle-example-v2/v2" in result.stdout
+    first = artifacts / "bookshelf-bundle-example-v1" / "v1"
+    second = artifacts / "bookshelf-bundle-example-v2" / "v2"
+    assert result.stdout == f"BUNDLES={first} {second}\n"
 
 
 def test_the_script_reports_a_missing_bundle_to_the_summary(tmp_path: Path) -> None:
@@ -132,42 +129,47 @@ def test_the_script_reports_a_missing_bundle_to_the_summary(tmp_path: Path) -> N
     assert not result.stdout
 
 
-def test_the_script_reports_artifacts_that_were_never_produced(tmp_path: Path) -> None:
+def test_the_script_reports_a_target_list_that_was_never_produced(
+    tmp_path: Path,
+) -> None:
     result = run_script("--artifacts", str(tmp_path / "missing"))
 
     assert result.returncode == 1
-    assert "no candidate identity was produced" in result.stderr
     assert "no target list was produced" in result.stderr
 
 
 def test_the_script_reports_an_empty_target_list(tmp_path: Path) -> None:
     artifacts = tmp_path / "artifacts"
-    write_json(artifacts / "candidate.json", CANDIDATE)
     write_json(artifacts / "targets.json", [])
 
     result = run_script("--artifacts", str(artifacts))
 
     assert result.returncode == 1
-    assert "the target list is empty" in result.stderr
+    assert "the target list is empty or not a list" in result.stderr
 
 
-def test_the_script_refuses_an_identity_that_could_inject_environment(
+def test_the_script_refuses_a_target_that_could_inject_environment(
     tmp_path: Path,
 ) -> None:
-    """Earlier jobs run pull request code, so nothing forged may reach `$GITHUB_ENV`."""
+    """Pull request code writes the target list, so it must not reach `$GITHUB_ENV`."""
     artifacts = lay_out(tmp_path, ("v1", "v2"))
-    injected = CANDIDATE["head_sha"] + "\nBASH_ENV=/tmp/evil"
-    forged = {**CANDIDATE, "head_sha": injected}
-    write_json(artifacts / "candidate.json", forged)
+    forged = {
+        "recipe": "bookshelf.yaml",
+        "volume": "example",
+        "version": "v3\nBASH_ENV=x",
+    }
+    write_json(artifacts / "targets.json", [*TARGETS, forged])
 
     result = run_script("--artifacts", str(artifacts))
 
     assert result.returncode == 1
-    assert "candidate head_sha is not a Git object id" in result.stderr
+    assert "unsafe volume or version" in result.stderr
     assert not result.stdout
 
 
-def test_the_script_refuses_a_target_with_an_unsafe_name(tmp_path: Path) -> None:
+def test_the_script_refuses_a_target_that_walks_out_of_its_artifact(
+    tmp_path: Path,
+) -> None:
     artifacts = lay_out(tmp_path, ("v1", "v2"))
     write_json(
         artifacts / "targets.json",
@@ -178,4 +180,3 @@ def test_the_script_refuses_a_target_with_an_unsafe_name(tmp_path: Path) -> None
 
     assert result.returncode == 1
     assert "unsafe volume or version" in result.stderr
-    assert not result.stdout
