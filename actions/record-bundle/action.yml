@@ -18,6 +18,14 @@ inputs:
     description: "Single version to record. Records every version the recipe declares when left empty."
     required: false
     default: ""
+  volume:
+    description: "Volume the recorded version belongs to, as reported in outcome.json"
+    required: false
+    default: ""
+  write-outcome:
+    description: "Write outcome.json under the bundle directory when a single version is recorded"
+    required: false
+    default: "true"
 
 outputs:
   bundles:
@@ -63,6 +71,8 @@ runs:
 
     - name: Record and validate every version
       id: record
+      # The next step reports the outcome, so a failure here still leaves one behind.
+      continue-on-error: true
       shell: bash
       env:
         RECIPE: ${{ inputs.recipe }}
@@ -77,18 +87,55 @@ runs:
       # A bare `bookshelf record` refuses to, which is what protects a local bundle under review.
       run: |
         set -euo pipefail
+        stage=""
+        version=""
+        trap 'echo "reason=bookshelf ${stage} failed for ${version}" >> "${GITHUB_OUTPUT}"' ERR
         bundles=""
         for version in ${VERSIONS}; do
           bundle="${BUNDLE}/${version}"
           echo "::group::${version}"
+          stage=record
           uv run bookshelf record \
             --recipe "${RECIPE}" \
             --bundle "${bundle}" \
             --version "${version}" \
             --force \
             --json
+          stage=validate
           uv run bookshelf validate "${bundle}" --json
           echo "::endgroup::"
           bundles="${bundles}${bundles:+ }${bundle}"
         done
         echo "bundles=${bundles}" >> "${GITHUB_OUTPUT}"
+
+    - name: Report the outcome
+      shell: bash
+      env:
+        BUNDLE: ${{ inputs.bundle }}
+        VOLUME: ${{ inputs.volume }}
+        VERSION: ${{ inputs.version }}
+        WRITE_OUTCOME: ${{ inputs.write-outcome }}
+        OUTCOME: ${{ steps.record.outcome }}
+        REASON: ${{ steps.record.outputs.reason }}
+      run: |
+        set -euo pipefail
+        status=validated
+        reason=""
+        if [[ "${OUTCOME}" != "success" ]]; then
+          status=failed
+          reason="${REASON:-bookshelf record failed}"
+        fi
+        if [[ "${WRITE_OUTCOME}" == "true" && -n "${VERSION}" ]]; then
+          mkdir -p "${BUNDLE}"
+          jq -n \
+            --arg volume "${VOLUME}" \
+            --arg version "${VERSION}" \
+            --arg status "${status}" \
+            --arg reason "${reason}" \
+            '{volume: $volume, version: $version, status: $status, reason: $reason}' \
+            > "${BUNDLE}/outcome.json"
+        fi
+        if [[ "${status}" != "validated" ]]; then
+          echo "::error::${reason}"
+          exit 1
+        fi

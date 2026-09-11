@@ -9,21 +9,44 @@ on:
         type: string
         default: "3.12"
       version:
-        description: Single version to record. Records every version the recipe declares when left empty.
+        description: Single version to record. Records every version the recipes declare when left empty.
         required: false
         type: string
         default: ""
+      recipes:
+        description: Whitespace separated recipes, each declaring one volume and its books
+        required: false
+        type: string
+        default: bookshelf.yaml
+      main-ref:
+        description: Branch a pull request is merged with to build the candidate
+        required: false
+        type: string
+        default: main
 
 permissions:
   contents: read
 
+concurrency:
+  group: bookshelf-preview-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  record:
-    name: Record and validate bundles
+  candidate:
+    name: Build the candidate
     runs-on: ubuntu-latest
+    outputs:
+      conflict: ${{ steps.candidate.outputs.conflict }}
+      head-sha: ${{ steps.candidate.outputs.head-sha }}
+      main-sha: ${{ steps.candidate.outputs.main-sha }}
+      candidate-tree: ${{ steps.candidate.outputs.candidate-tree }}
     steps:
       - name: Check out feedstock
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Check out matching feedstock action
         uses: actions/checkout@v6
@@ -33,15 +56,200 @@ jobs:
           path: .copier-bookshelf-dataset
           persist-credentials: false
 
-      - name: Record and validate bundles
+      - name: Merge the head with main
+        id: candidate
+        env:
+          EVENT: ${{ github.event_name }}
+          MAIN_REF: ${{ inputs.main-ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash .copier-bookshelf-dataset/actions/record-bundle/candidate.sh
+
+      - name: Write the candidate identity
+        env:
+          HEAD_SHA: ${{ steps.candidate.outputs.head-sha }}
+          MAIN_SHA: ${{ steps.candidate.outputs.main-sha }}
+          CANDIDATE_TREE: ${{ steps.candidate.outputs.candidate-tree }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          jq -n \
+            --arg head_sha "${HEAD_SHA}" \
+            --arg main_sha "${MAIN_SHA}" \
+            --arg candidate_tree "${CANDIDATE_TREE}" \
+            --arg run_id "${RUN_ID}" \
+            --arg run_attempt "${RUN_ATTEMPT}" \
+            --arg event "${EVENT}" \
+            '$ARGS.named' > candidate.json
+          cat candidate.json
+
+      - name: Upload the candidate identity
+        uses: actions/upload-artifact@v6
+        with:
+          name: bookshelf-candidate
+          path: candidate.json
+          if-no-files-found: error
+
+  targets:
+    name: List the targets
+    needs: candidate
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.targets.outputs.targets }}
+    steps:
+      - name: Check out feedstock
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out matching feedstock action
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .copier-bookshelf-dataset
+          persist-credentials: false
+
+      - name: Rebuild the candidate
+        env:
+          EVENT: ${{ github.event_name }}
+          MAIN_REF: ${{ inputs.main-ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MAIN_SHA: ${{ needs.candidate.outputs.main-sha }}
+          EXPECTED_TREE: ${{ needs.candidate.outputs.candidate-tree }}
+        run: bash .copier-bookshelf-dataset/actions/record-bundle/candidate.sh
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          python-version: ${{ inputs.python-version }}
+          enable-cache: "true"
+
+      - name: List every target the recipes declare
+        id: targets
+        env:
+          RECIPES: ${{ inputs.recipes }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          uv sync --locked
+          # shellcheck disable=SC2086 # RECIPES is a whitespace separated list
+          uv run python .copier-bookshelf-dataset/actions/record-bundle/targets.py \
+            --output targets.json --version "${VERSION}" ${RECIPES}
+          cat targets.json
+
+      - name: Upload the target list
+        uses: actions/upload-artifact@v6
+        with:
+          name: bookshelf-targets
+          path: targets.json
+          if-no-files-found: error
+
+  record:
+    name: Record ${{ matrix.target.volume }} ${{ matrix.target.version }}
+    needs: [candidate, targets]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.targets.outputs.targets) }}
+    steps:
+      - name: Check out feedstock
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out matching feedstock action
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .copier-bookshelf-dataset
+          persist-credentials: false
+
+      - name: Rebuild the candidate
+        env:
+          EVENT: ${{ github.event_name }}
+          MAIN_REF: ${{ inputs.main-ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MAIN_SHA: ${{ needs.candidate.outputs.main-sha }}
+          EXPECTED_TREE: ${{ needs.candidate.outputs.candidate-tree }}
+        run: bash .copier-bookshelf-dataset/actions/record-bundle/candidate.sh
+
+      - name: Record and validate the bundle
         uses: ./.copier-bookshelf-dataset/actions/record-bundle
         with:
           python-version: ${{ inputs.python-version }}
-          version: ${{ inputs.version }}
+          recipe: ${{ matrix.target.recipe }}
+          version: ${{ matrix.target.version }}
+          volume: ${{ matrix.target.volume }}
 
-      - name: Upload validated bundles
+      - name: Upload the bundle and its outcome
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v6
         with:
-          name: bookshelf-bundle
+          name: bookshelf-bundle-${{ matrix.target.volume }}-${{ matrix.target.version }}
           path: bundle
           if-no-files-found: error
+
+  candidate-outcome:
+    name: candidate outcome
+    if: always()
+    needs: [candidate, targets, record]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out matching feedstock action
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .copier-bookshelf-dataset
+          persist-credentials: false
+
+      # A job that never ran leaves nothing to download, which the report counts against the candidate.
+      - name: Download the candidate identity
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: bookshelf-candidate
+          path: candidate
+
+      - name: Download the target list
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: bookshelf-targets
+          path: targets
+
+      - name: Download every outcome
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          pattern: bookshelf-bundle-*
+          path: outcomes
+
+      - name: Check every expected book was validated
+        env:
+          CONFLICT: ${{ needs.candidate.outputs.conflict }}
+          CANDIDATE_RESULT: ${{ needs.candidate.result }}
+          TARGETS_RESULT: ${{ needs.targets.result }}
+          RECORD_RESULT: ${{ needs.record.result }}
+        run: |
+          set -euo pipefail
+          conflict=()
+          if [[ "${CONFLICT}" == "true" ]]; then
+            conflict=(--conflict)
+          fi
+          python3 .copier-bookshelf-dataset/actions/record-bundle/aggregate.py \
+            --targets targets/targets.json \
+            --outcomes-dir outcomes \
+            --candidate candidate/candidate.json \
+            --job "candidate=${CANDIDATE_RESULT}" \
+            --job "targets=${TARGETS_RESULT}" \
+            --job "record=${RECORD_RESULT}" \
+            "${conflict[@]}" \
+            | tee -a "${GITHUB_STEP_SUMMARY}"

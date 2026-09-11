@@ -72,6 +72,26 @@ CI records every version the recipe declares, and the publish workflow replays e
 Publishing an unchanged book is idempotent, so a version that has not moved keeps its edition.
 Pass a `version` input to either reusable workflow to narrow that to one book.
 
+The CI workflow validates a candidate rather than whatever was checked out:
+
+- On a pull request, the candidate is the head merged with the current `main`.
+  The `candidate` job pins that `main` commit, and every later job rebuilds the same merge and checks it gets the same tree.
+  A merge conflict fails the run rather than recording either side.
+- On any other event, the candidate is the commit being built.
+- The candidate identity (head SHA, main SHA and merged tree) is uploaded as the `bookshelf-candidate` artifact.
+- The `targets` job lists one target per `(volume, version)` across the `recipes` input (default `bookshelf.yaml`).
+  It uploads the list as `bookshelf-targets` and fails on an empty list or a target two recipes both declare.
+- The `record` job records and validates each target in its own matrix leg.
+  Each leg uploads `bookshelf-bundle-<volume>-<version>`, holding the bundle and an `outcome.json` that says `validated` or `failed`.
+- The `candidate outcome` job always runs.
+  It passes only when every target has exactly one `validated` outcome and every job before it succeeded, so a skipped or cancelled leg counts as a failure.
+  It writes a table of the outcomes to the job summary.
+
+None of these jobs holds a credential.
+The required check is the platform's `Bookshelf / validate publication`, not `candidate outcome`, and the platform posts the pull request comment and publishes.
+A candidate is only as fresh as the `main` it was merged with,
+so readiness relies on the feedstock ruleset requiring branches to be up to date before merging.
+
 This public repository hosts the reusable feedstock workflows in `.github/workflows/feedstock-ci.yaml` and `.github/workflows/feedstock-publish.yaml`.
 Their composite action lives in `actions/record-bundle`.
 Generated callers pin the reusable workflows to the exact Copier ref that generated the feedstock.
