@@ -11,7 +11,7 @@ volume:
 # Defaults for every book
 # Any overrides for a specific book win
 defaults:
-  title: "Multi-volume Dataset"
+  title: "Second Volume"
   description: "Two volumes built from one feedstock."
   publisher: Climate Resource
   repository_url: https://github.com/climate-resource/bookshelf-multi-volume
@@ -34,7 +34,7 @@ books:
     license_url: https://creativecommons.org/licenses/by/4.0/
     description: >-
       The scaffolded example book.
-      Replace it with the first real version of Multi-volume Dataset.
+      Replace it with the first real version of Second Volume.
     resources:
       # A checked-in input needs no sha256.
       # Replace it with `uri:` and the `sha256:` the fetch is checked against.

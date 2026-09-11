@@ -70,6 +70,16 @@
         "climate-resource/copier-bookshelf-dataset"
       ],
       "enabled": false
+    },
+    {
+      "description": "The CI caller installs the same exact SDK, so `copier update` moves the pin, not Renovate",
+      "matchManagers": [
+        "pep621"
+      ],
+      "matchDepNames": [
+        "bookshelf"
+      ],
+      "enabled": false
     }
   ]
 }

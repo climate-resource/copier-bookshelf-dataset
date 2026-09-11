@@ -188,11 +188,13 @@ def test_answer_sets_only_add_the_requested_recipe_files(
         assert bool(extra) == (generated.name == "multi-volume")
         for name in generated.answers["extra_recipes"]:
             recipe = yaml.safe_load(generated.read(f"bookshelf-{name}.yaml"))
-            assert recipe == {
-                **generated.recipe,
-                "volume": {
-                    **generated.recipe["volume"],
-                    "name": name,
-                    "keywords": [name],
-                },
+            assert recipe["volume"] == {
+                **generated.recipe["volume"],
+                "name": name,
+                "keywords": [name],
             }
+            assert recipe["defaults"]["title"] == name.replace("-", " ").title()
+            assert recipe["build"] == generated.recipe["build"]
+            assert [book["version"] for book in recipe["books"]] == [
+                book["version"] for book in generated.recipe["books"]
+            ]

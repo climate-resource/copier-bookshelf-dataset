@@ -1,3 +1,3 @@
-{% with dataset_name = recipe %}
+{% with dataset_name = recipe, dataset_name_human = recipe | replace("-", " ") | title %}
 {% include 'template/bookshelf.yaml.jinja' %}
 {% endwith %}

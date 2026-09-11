@@ -79,8 +79,8 @@ CI records and validates each `(volume, version)` target in its own matrix job.
 The `candidate outcome` job reports whether every expected target validated.
 The platform's publication check is the required check in the repository ruleset.
 
-The `Bookshelf` caller passes `recipes`, `main-ref: main`, `api-base-url` and `sdk-version`
-to the reusable workflow.
+The `Bookshelf` caller passes four inputs to the reusable workflow:
+`recipes`, `main-ref: main`, `api-base-url` and `sdk-version`.
 The `bookshelf_sdk_version` Copier answer pins the same exact SDK version in CI and `pyproject.toml`.
 The `extra_recipes` answer is a YAML list of additional volume names, with an empty list as its default.
 For example, `[second-volume]` adds `bookshelf-second-volume.yaml` alongside `bookshelf.yaml`.
@@ -110,6 +110,8 @@ and the `BOOKSHELF_TOKEN_URL` repository variable.
 The legacy publish caller uses `secrets: inherit`.
 Its reusable publish job carries `environment: deploy`, which resolves those environment secrets at job start.
 These credentials belong only to the legacy release path.
+The legacy path publishes `bookshelf.yaml` alone,
+so a feedstock with `extra_recipes` needs PR publication to publish its other volumes.
 
 ## Repository rules
 
@@ -145,12 +147,13 @@ or let Renovate open the pull request for them.
 A green test suite proves the render is valid, not that the rendered feedstock still works
 against a live Bookshelf.
 The [release pilot](docs/runbooks/release-pilot.md) checks the legacy release path.
-Use the PR publication pilot above for repositories that publish on merge.
 It drives a tagged release through the `bookshelf-test` feedstock and asks the API what landed:
 
 ```bash
 bash scripts/release-pilot.sh --template-ref v1.2.3
 ```
+
+Use the PR publication pilot above for repositories that publish on merge.
 
 ## Updating repositories
 

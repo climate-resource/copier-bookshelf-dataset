@@ -10,6 +10,7 @@ directory and prepared with `make initial-setup` before it can record anything.
 Preparing and recording are the expensive parts, so both happen once per session.
 """
 
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -17,7 +18,7 @@ from typing import Any
 
 import pytest
 import yaml
-from conftest import BUNDLE, ENV, FEEDSTOCKS, VERSION, Feedstock
+from conftest import ACTION, BUNDLE, ENV, FEEDSTOCKS, VERSION, Feedstock
 
 pytestmark = pytest.mark.slow
 
@@ -247,3 +248,35 @@ def test_extra_recipes_record_distinct_volumes(workspaces: dict[str, Path]) -> N
     manifest = yaml.safe_load((workspace / bundle / "manifest.lock").read_text())
     assert manifest["book"]["volume"] == "second-volume"
     assert manifest["book"]["version"] == VERSION
+
+
+def test_the_caller_recipes_list_one_target_per_volume(
+    workspaces: dict[str, Path], tmp_path: Path
+) -> None:
+    """The multi-volume caller's recipes split into one CI target per volume."""
+    workspace = workspaces["multi-volume"]
+    caller = yaml.safe_load(
+        (workspace / ".github" / "workflows" / "feedstock-ci.yaml").read_text()
+    )
+    recipes = caller["jobs"]["bookshelf"]["with"]["recipes"].split()
+    targets_file = tmp_path / "targets.json"
+    subprocess.run(
+        (
+            "uv",
+            "run",
+            "python",
+            str(ACTION / "targets.py"),
+            "--output",
+            str(targets_file),
+            *recipes,
+        ),
+        cwd=workspace,
+        env={**ENV, "GITHUB_OUTPUT": str(tmp_path / "outputs")},
+        check=True,
+    )
+
+    targets = json.loads(targets_file.read_text())
+    assert sorted((target["volume"], target["version"]) for target in targets) == [
+        ("multi-volume", VERSION),
+        ("second-volume", VERSION),
+    ]

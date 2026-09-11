@@ -47,6 +47,11 @@ The platform owns the check, comment, merge publication and closure handling.
    Confirm the platform handles closure and the preview's books are not published.
    Confirm the caller needed no close trigger or withdrawal step.
 
-Stop the pilot if a required rule is missing, a failing candidate can merge, the comment duplicates,
-or publication or origin evidence does not match the approved candidate.
+Stop the pilot if any of these happen:
+
+- A required rule is missing.
+- A failing candidate can merge.
+- The comment duplicates.
+- Publication or origin evidence does not match the approved candidate.
+
 Record the failed step and its run URL for #30 before attempting a wider rollout.
