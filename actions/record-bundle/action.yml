@@ -23,7 +23,7 @@ inputs:
     required: false
     default: ""
   write-outcome:
-    description: "Write outcome.json under the bundle directory when a single version is recorded"
+    description: "Write outcome.json under the bundle directory when a volume and a single version are given"
     required: false
     default: "true"
 
@@ -53,7 +53,9 @@ runs:
       uses: actions/cache@v6
       with:
         path: .cache
-        key: bookshelf-content-${{ runner.os }}-${{ steps.raw-cache-key.outputs.key }}
+        # Each matrix leg fetches only its own book, so it saves under its own key.
+        key: bookshelf-content-${{ runner.os }}-${{ steps.raw-cache-key.outputs.key }}-${{ inputs.volume }}-${{ inputs.version }}
+        restore-keys: bookshelf-content-${{ runner.os }}-${{ steps.raw-cache-key.outputs.key }}-
 
     - name: Install locked feedstock environment
       shell: bash
@@ -61,6 +63,7 @@ runs:
 
     - name: Resolve the versions to record
       id: versions
+      if: inputs.version == ''
       shell: bash
       env:
         RECIPE: ${{ inputs.recipe }}
@@ -77,7 +80,7 @@ runs:
       env:
         RECIPE: ${{ inputs.recipe }}
         BUNDLE: ${{ inputs.bundle }}
-        VERSIONS: ${{ steps.versions.outputs.versions }}
+        VERSIONS: ${{ inputs.version || steps.versions.outputs.versions }}
         # The SDK caches fetched content under its platform directory by default,
         # which no runner keeps between jobs.
         BOOKSHELF_CACHE_DIR: .cache
@@ -125,7 +128,7 @@ runs:
           status=failed
           reason="${REASON:-bookshelf record failed}"
         fi
-        if [[ "${WRITE_OUTCOME}" == "true" && -n "${VERSION}" ]]; then
+        if [[ "${WRITE_OUTCOME}" == "true" && -n "${VOLUME}" && -n "${VERSION}" ]]; then
           mkdir -p "${BUNDLE}"
           jq -n \
             --arg volume "${VOLUME}" \

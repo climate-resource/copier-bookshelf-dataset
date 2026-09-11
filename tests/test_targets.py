@@ -7,116 +7,100 @@ import types
 from pathlib import Path
 
 import pytest
-import yaml
 from conftest import ACTION
-
-
-def load_record_recipe(path: Path) -> types.SimpleNamespace:
-    """Read the two facts the target list needs, as the SDK's loader exposes them."""
-    raw = yaml.safe_load(path.read_text())
-    return types.SimpleNamespace(
-        volume=types.SimpleNamespace(name=raw["volume"]["name"]),
-        versions=tuple(book["version"] for book in raw.get("books") or ()),
-    )
-
-
-# The SDK lives in a feedstock's environment rather than this repository's.
-STUB = types.ModuleType("bookshelf.publisher.recipe")
-STUB.load_record_recipe = load_record_recipe  # type: ignore[attr-defined]
-sys.modules.setdefault("bookshelf", types.ModuleType("bookshelf"))
-sys.modules.setdefault("bookshelf.publisher", types.ModuleType("bookshelf.publisher"))
-sys.modules.setdefault("bookshelf.publisher.recipe", STUB)
 
 SPEC = importlib.util.spec_from_file_location("targets", ACTION / "targets.py")
 assert SPEC is not None and SPEC.loader is not None
 TARGETS = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(TARGETS)
 
-
-def write_recipe(path: Path, volume: str, versions: list[str]) -> Path:
-    """Write a recipe declaring one volume and its books."""
-    path.write_text(
-        yaml.safe_dump(
-            {"volume": {"name": volume}, "books": [{"version": v} for v in versions]}
-        )
-    )
-    return path
+ONE = Path("one.yaml")
+TWO = Path("two.yaml")
 
 
-def test_a_single_recipe_lists_every_book_in_recipe_order(tmp_path: Path) -> None:
-    recipe = write_recipe(tmp_path / "bookshelf.yaml", "example", ["v2", "v1"])
-
-    assert TARGETS.collect_targets([recipe]) == [
-        {"recipe": str(recipe), "volume": "example", "version": "v2"},
-        {"recipe": str(recipe), "volume": "example", "version": "v1"},
+def test_a_single_recipe_lists_every_book_in_recipe_order() -> None:
+    assert TARGETS.collect_targets([(ONE, "example", ("v2", "v1"))]) == [
+        {"recipe": "one.yaml", "volume": "example", "version": "v2"},
+        {"recipe": "one.yaml", "volume": "example", "version": "v1"},
     ]
 
 
-def test_two_recipes_list_both_volumes(tmp_path: Path) -> None:
-    first = write_recipe(tmp_path / "one.yaml", "one", ["v1"])
-    second = write_recipe(tmp_path / "two.yaml", "two", ["v1", "v2"])
-
-    targets = TARGETS.collect_targets([first, second])
+def test_two_recipes_list_both_volumes() -> None:
+    targets = TARGETS.collect_targets(
+        [(ONE, "one", ("v1",)), (TWO, "two", ("v1", "v2"))]
+    )
 
     assert [(t["recipe"], t["volume"], t["version"]) for t in targets] == [
-        (str(first), "one", "v1"),
-        (str(second), "two", "v1"),
-        (str(second), "two", "v2"),
+        ("one.yaml", "one", "v1"),
+        ("two.yaml", "two", "v1"),
+        ("two.yaml", "two", "v2"),
     ]
 
 
-def test_a_version_narrows_the_list_to_one_book(tmp_path: Path) -> None:
-    recipe = write_recipe(tmp_path / "bookshelf.yaml", "example", ["v1", "v2"])
-
-    assert TARGETS.collect_targets([recipe], "v2") == [
-        {"recipe": str(recipe), "volume": "example", "version": "v2"}
+def test_a_version_narrows_the_list_to_one_book() -> None:
+    assert TARGETS.collect_targets([(ONE, "example", ("v1", "v2"))], "v2") == [
+        {"recipe": "one.yaml", "volume": "example", "version": "v2"}
     ]
 
 
-def test_a_target_declared_twice_is_rejected(tmp_path: Path) -> None:
+def test_a_target_declared_twice_is_rejected() -> None:
     """Two recipes writing one book would race to publish it."""
-    first = write_recipe(tmp_path / "one.yaml", "example", ["v1", "v2"])
-    second = write_recipe(tmp_path / "two.yaml", "example", ["v2"])
+    recipes = [(ONE, "example", ("v1", "v2")), (TWO, "example", ("v2",))]
 
     with pytest.raises(ValueError, match="example-v2"):
-        TARGETS.collect_targets([first, second])
+        TARGETS.collect_targets(recipes)
 
 
-def test_targets_whose_artifact_names_collide_are_rejected(tmp_path: Path) -> None:
+def test_targets_whose_artifact_names_collide_are_rejected() -> None:
     """`a-b` at `c` and `a` at `b-c` would upload the same artifact."""
-    first = write_recipe(tmp_path / "one.yaml", "a-b", ["c"])
-    second = write_recipe(tmp_path / "two.yaml", "a", ["b-c"])
+    recipes = [(ONE, "a-b", ("c",)), (TWO, "a", ("b-c",))]
 
     with pytest.raises(ValueError, match="a-b-c"):
-        TARGETS.collect_targets([first, second])
+        TARGETS.collect_targets(recipes)
 
 
-def test_an_empty_list_is_rejected(tmp_path: Path) -> None:
+def test_an_empty_list_is_rejected() -> None:
     """A matrix over nothing would report success without recording a book."""
-    recipe = write_recipe(tmp_path / "bookshelf.yaml", "example", [])
-
     with pytest.raises(ValueError, match="no books"):
-        TARGETS.collect_targets([recipe])
+        TARGETS.collect_targets([(ONE, "example", ())])
 
 
-def test_a_version_no_recipe_declares_is_rejected(tmp_path: Path) -> None:
-    recipe = write_recipe(tmp_path / "bookshelf.yaml", "example", ["v1"])
-
+def test_a_version_no_recipe_declares_is_rejected() -> None:
     with pytest.raises(ValueError, match="no books"):
-        TARGETS.collect_targets([recipe], "v9")
+        TARGETS.collect_targets([(ONE, "example", ("v1",))], "v9")
+
+
+@pytest.fixture
+def sdk(monkeypatch: pytest.MonkeyPatch) -> dict[str, tuple[str, ...]]:
+    """Stand in for the SDK's loader, which lives in a feedstock's environment."""
+    versions: dict[str, tuple[str, ...]] = {}
+
+    def load_record_recipe(path: Path) -> types.SimpleNamespace:
+        return types.SimpleNamespace(
+            volume=types.SimpleNamespace(name="example"), versions=versions[str(path)]
+        )
+
+    recipe_module = types.ModuleType("bookshelf.publisher.recipe")
+    recipe_module.load_record_recipe = load_record_recipe  # type: ignore[attr-defined]
+    for name in ("bookshelf", "bookshelf.publisher"):
+        monkeypatch.setitem(sys.modules, name, types.ModuleType(name))
+    monkeypatch.setitem(sys.modules, "bookshelf.publisher.recipe", recipe_module)
+    return versions
 
 
 def test_main_writes_the_file_and_a_compact_step_output(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    sdk: dict[str, tuple[str, ...]],
 ) -> None:
     """The step output feeds `fromJSON`, so it has to stay on one line."""
-    recipe = write_recipe(tmp_path / "bookshelf.yaml", "example", ["v1", "v2"])
+    sdk["bookshelf.yaml"] = ("v1", "v2")
     output = tmp_path / "github-output"
     output.write_text("earlier=kept\n")
     targets_file = tmp_path / "targets.json"
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
     monkeypatch.setattr(
-        "sys.argv", ["targets.py", "--output", str(targets_file), str(recipe)]
+        "sys.argv", ["targets.py", "--output", str(targets_file), "bookshelf.yaml"]
     )
 
     TARGETS.main()
@@ -131,11 +115,13 @@ def test_main_writes_the_file_and_a_compact_step_output(
 
 
 def test_main_exits_with_the_reason_on_an_empty_list(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    sdk: dict[str, tuple[str, ...]],
 ) -> None:
-    recipe = write_recipe(tmp_path / "bookshelf.yaml", "example", [])
+    sdk["bookshelf.yaml"] = ()
     monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "github-output"))
-    monkeypatch.setattr("sys.argv", ["targets.py", str(recipe)])
+    monkeypatch.setattr("sys.argv", ["targets.py", "bookshelf.yaml"])
 
     with pytest.raises(SystemExit, match="no books"):
         TARGETS.main()

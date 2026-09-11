@@ -5,23 +5,21 @@ import json
 import os
 import sys
 from collections import Counter
+from collections.abc import Sequence
 from pathlib import Path
 
-from bookshelf.publisher.recipe import load_record_recipe
+# A recipe file, its volume, and the versions it declares in recipe order.
+Recipe = tuple[Path, str, Sequence[str]]
 
 
-def collect_targets(
-    recipe_files: list[Path], version: str = ""
-) -> list[dict[str, str]]:
+def collect_targets(recipes: list[Recipe], version: str = "") -> list[dict[str, str]]:
     """Return one target per book, in recipe order, narrowed to `version` when given."""
-    targets = []
-    for recipe_file in recipe_files:
-        recipe = load_record_recipe(recipe_file)
-        targets.extend(
-            {"recipe": str(recipe_file), "volume": recipe.volume.name, "version": book}
-            for book in recipe.versions
-            if not version or book == version
-        )
+    targets = [
+        {"recipe": str(path), "volume": volume, "version": book}
+        for path, volume, versions in recipes
+        for book in versions
+        if not version or book == version
+    ]
 
     if not targets:
         raise ValueError("the recipes declare no books, so there is nothing to record")
@@ -43,8 +41,16 @@ def main() -> None:
     parser.add_argument("--version", default="")
     args = parser.parse_args()
 
+    # Only a feedstock's environment has the SDK, so it is imported here.
+    from bookshelf.publisher.recipe import load_record_recipe  # noqa: PLC0415
+
+    recipes = []
+    for path in args.recipes:
+        recipe = load_record_recipe(path)
+        recipes.append((path, recipe.volume.name, recipe.versions))
+
     try:
-        targets = collect_targets(args.recipes, args.version)
+        targets = collect_targets(recipes, args.version)
     except ValueError as error:
         sys.exit(str(error))
 

@@ -37,7 +37,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       conflict: ${{ steps.candidate.outputs.conflict }}
-      head-sha: ${{ steps.candidate.outputs.head-sha }}
       main-sha: ${{ steps.candidate.outputs.main-sha }}
       candidate-tree: ${{ steps.candidate.outputs.candidate-tree }}
     steps:
@@ -46,6 +45,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+          filter: blob:none
 
       - name: Check out matching feedstock action
         uses: actions/checkout@v6
@@ -58,9 +58,7 @@ jobs:
       - name: Merge the head with main
         id: candidate
         env:
-          EVENT: ${{ github.event_name }}
           MAIN_REF: ${{ inputs.main-ref }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: bash .copier-bookshelf-dataset/actions/record-bundle/candidate.sh
 
       - name: Write the candidate identity
@@ -68,17 +66,14 @@ jobs:
           HEAD_SHA: ${{ steps.candidate.outputs.head-sha }}
           MAIN_SHA: ${{ steps.candidate.outputs.main-sha }}
           CANDIDATE_TREE: ${{ steps.candidate.outputs.candidate-tree }}
-          RUN_ID: ${{ github.run_id }}
-          RUN_ATTEMPT: ${{ github.run_attempt }}
-          EVENT: ${{ github.event_name }}
         run: |
           jq -n \
             --arg head_sha "${HEAD_SHA}" \
             --arg main_sha "${MAIN_SHA}" \
             --arg candidate_tree "${CANDIDATE_TREE}" \
-            --argjson run_id "${RUN_ID}" \
-            --argjson run_attempt "${RUN_ATTEMPT}" \
-            --arg event "${EVENT}" \
+            --argjson run_id "${GITHUB_RUN_ID}" \
+            --argjson run_attempt "${GITHUB_RUN_ATTEMPT}" \
+            --arg event "${GITHUB_EVENT_NAME}" \
             '$ARGS.named' > candidate.json
           cat candidate.json
 
@@ -102,6 +97,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+          filter: blob:none
 
       - name: Check out matching feedstock action
         uses: actions/checkout@v6
@@ -113,9 +109,7 @@ jobs:
 
       - name: Rebuild the candidate
         env:
-          EVENT: ${{ github.event_name }}
           MAIN_REF: ${{ inputs.main-ref }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           MAIN_SHA: ${{ needs.candidate.outputs.main-sha }}
           EXPECTED_TREE: ${{ needs.candidate.outputs.candidate-tree }}
         run: bash .copier-bookshelf-dataset/actions/record-bundle/candidate.sh
@@ -161,6 +155,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+          filter: blob:none
 
       - name: Check out matching feedstock action
         uses: actions/checkout@v6
@@ -172,9 +167,7 @@ jobs:
 
       - name: Rebuild the candidate
         env:
-          EVENT: ${{ github.event_name }}
           MAIN_REF: ${{ inputs.main-ref }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           MAIN_SHA: ${{ needs.candidate.outputs.main-sha }}
           EXPECTED_TREE: ${{ needs.candidate.outputs.candidate-tree }}
         run: bash .copier-bookshelf-dataset/actions/record-bundle/candidate.sh
@@ -240,10 +233,6 @@ jobs:
           RECORD_RESULT: ${{ needs.record.result }}
         run: |
           set -euo pipefail
-          conflict=()
-          if [[ "${CONFLICT}" == "true" ]]; then
-            conflict=(--conflict)
-          fi
           python3 .copier-bookshelf-dataset/actions/record-bundle/aggregate.py \
             --targets targets/targets.json \
             --outcomes-dir outcomes \
@@ -251,5 +240,5 @@ jobs:
             --job "candidate=${CANDIDATE_RESULT}" \
             --job "targets=${TARGETS_RESULT}" \
             --job "record=${RECORD_RESULT}" \
-            "${conflict[@]}" \
+            --conflict "${CONFLICT}" \
             | tee -a "${GITHUB_STEP_SUMMARY}"

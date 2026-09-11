@@ -1,5 +1,6 @@
 """Tests for the script that builds the candidate a feedstock run validates."""
 
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -40,9 +41,19 @@ def clone(tmp_path: Path) -> Path:
     return work
 
 
-def run(clone: Path, tmp_path: Path, **env: str) -> tuple[int, dict[str, str]]:
+def run(
+    clone: Path, tmp_path: Path, head: str = "", **env: str
+) -> tuple[int, dict[str, str]]:
+    """Run the script as a pull request for `head`, or as a push without one."""
     output = tmp_path / "github-output"
     output.write_text("")
+    event = tmp_path / "event.json"
+    event.write_text(json.dumps({"pull_request": {"head": {"sha": head}}}))
+    env = {
+        "GITHUB_EVENT_NAME": "pull_request" if head else "push",
+        "GITHUB_EVENT_PATH": str(event),
+        **env,
+    }
     result = subprocess.run(
         ("bash", str(SCRIPT)),
         cwd=clone,
@@ -61,7 +72,7 @@ def test_a_pull_request_is_merged_with_the_current_main(
     head = commit(clone, "head.txt", "head\n")
     main = commit(tmp_path / "origin", "main.txt", "main\n")
 
-    code, outputs = run(clone, tmp_path, EVENT="pull_request", PR_HEAD_SHA=head)
+    code, outputs = run(clone, tmp_path, head)
 
     assert code == 0
     assert outputs["conflict"] == "false"
@@ -75,14 +86,13 @@ def test_a_rebuild_reproduces_the_pinned_tree(clone: Path, tmp_path: Path) -> No
     """A later job rebuilds from the pinned main, even after main moves on."""
     head = commit(clone, "head.txt", "head\n")
     main = commit(tmp_path / "origin", "main.txt", "main\n")
-    _, first = run(clone, tmp_path, EVENT="pull_request", PR_HEAD_SHA=head)
+    _, first = run(clone, tmp_path, head)
     commit(tmp_path / "origin", "later.txt", "later\n")
 
     code, again = run(
         clone,
         tmp_path,
-        EVENT="pull_request",
-        PR_HEAD_SHA=head,
+        head,
         MAIN_SHA=main,
         EXPECTED_TREE=first["candidate-tree"],
     )
@@ -95,9 +105,7 @@ def test_a_rebuild_reproduces_the_pinned_tree(clone: Path, tmp_path: Path) -> No
 def test_a_rebuild_that_differs_fails(clone: Path, tmp_path: Path) -> None:
     head = commit(clone, "head.txt", "head\n")
 
-    code, _ = run(
-        clone, tmp_path, EVENT="pull_request", PR_HEAD_SHA=head, EXPECTED_TREE="0" * 40
-    )
+    code, _ = run(clone, tmp_path, head, EXPECTED_TREE="0" * 40)
 
     assert code == 1
 
@@ -107,7 +115,7 @@ def test_a_conflict_fails_and_says_so(clone: Path, tmp_path: Path) -> None:
     head = commit(clone, "base.txt", "head\n")
     commit(tmp_path / "origin", "base.txt", "main\n")
 
-    code, outputs = run(clone, tmp_path, EVENT="pull_request", PR_HEAD_SHA=head)
+    code, outputs = run(clone, tmp_path, head)
 
     assert code == 1
     assert outputs == {"conflict": "true"}
@@ -118,7 +126,7 @@ def test_any_other_event_validates_the_commit_as_it_is(
 ) -> None:
     sha = git(clone, "rev-parse", "HEAD")
 
-    code, outputs = run(clone, tmp_path, EVENT="push", GITHUB_SHA=sha)
+    code, outputs = run(clone, tmp_path, GITHUB_SHA=sha)
 
     assert code == 0
     assert outputs["head-sha"] == outputs["main-sha"] == sha

@@ -118,7 +118,7 @@ def main() -> None:
     parser.add_argument("--targets", type=Path, required=True)
     parser.add_argument("--outcomes-dir", type=Path, required=True)
     parser.add_argument("--candidate", type=Path)
-    parser.add_argument("--conflict", action="store_true")
+    parser.add_argument("--conflict", type=lambda value: value == "true", default=False)
     parser.add_argument(
         "--job",
         action="append",

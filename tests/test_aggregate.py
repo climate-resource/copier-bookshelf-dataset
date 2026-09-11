@@ -177,7 +177,10 @@ def test_the_script_fails_when_nothing_was_downloaded(tmp_path: Path) -> None:
         str(tmp_path / "missing"),
         "--candidate",
         str(tmp_path / "missing.json"),
+        "--conflict",
+        "true",
     )
 
     assert result.returncode == 1
+    assert "merge-conflict" in result.stdout
     assert "no target list was produced" in result.stdout
