@@ -79,7 +79,8 @@ CI records and validates each `(volume, version)` target in its own matrix job.
 The `candidate outcome` job reports whether every expected target validated.
 The platform's publication check is the required check in the repository ruleset.
 
-The `Bookshelf` caller passes `recipes`, `main-ref: main` and `sdk-version` to the reusable workflow.
+The `Bookshelf` caller passes `recipes`, `main-ref: main`, `api-base-url` and `sdk-version`
+to the reusable workflow.
 The `bookshelf_sdk_version` Copier answer pins the same exact SDK version in CI and `pyproject.toml`.
 The `extra_recipes` answer is a YAML list of additional volume names, with an empty list as its default.
 For example, `[second-volume]` adds `bookshelf-second-volume.yaml` alongside `bookshelf.yaml`.
@@ -89,7 +90,8 @@ Each extra recipe initially shares the scaffold's build file and input, ready to
 Only the trusted `upload preview` job can mint a GitHub Actions OIDC token.
 It checks out this template's helpers and installs the pinned SDK without checking out pull request code.
 The generated CI caller needs no secrets, environment or token URL.
-The `api-base-url` reusable input selects the deployment and defaults to production.
+The caller reads `api-base-url` from the `BOOKSHELF_API_BASE_URL` repository variable,
+and falls back to production.
 A target that produces no bundle fails the upload job and leaves the platform check blocking the merge.
 Fork pull requests skip preview upload because they cannot mint a token for the upstream repository.
 
