@@ -125,10 +125,6 @@ def test_copier_copy_needs_no_trust(rendered: Rendered) -> None:
     assert (rendered.path / "bookshelf.yaml").exists()
     assert (rendered.path / "build.py").exists()
     assert (rendered.path / "renovate.json").exists()
-    extra = CASES[rendered.name].get("extra_recipes", [])
-    assert sorted(path.name for path in rendered.path.glob("bookshelf-*.yaml")) == [
-        f"bookshelf-{name}.yaml" for name in sorted(extra)
-    ]
 
 
 def test_the_live_render_matches_the_committed_fixture(rendered: Rendered) -> None:

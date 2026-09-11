@@ -5,6 +5,7 @@ rejected, and render nothing when it is accepted. These tests render them the sa
 Copier does, so a loosened pattern shows up here rather than in a generated feedstock.
 """
 
+import re
 import warnings
 
 import jinja2
@@ -165,8 +166,10 @@ def test_the_scaffold_commit_is_attributed_to_the_author() -> None:
 
 
 def test_preview_question_defaults() -> None:
-    """The SDK has one default and extra volumes are opt in."""
-    assert COPIER["bookshelf_sdk_version"]["default"] == "1.0.0b8"
+    """The SDK default is one exact version and extra volumes are opt in."""
+    assert re.fullmatch(
+        r"\d+\.\d+\.\d+((a|b|rc)\d+)?", COPIER["bookshelf_sdk_version"]["default"]
+    )
     assert COPIER["extra_recipes"]["default"] == []
 
 

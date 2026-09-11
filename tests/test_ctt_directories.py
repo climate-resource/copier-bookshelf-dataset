@@ -217,43 +217,10 @@ def test_recorded_resources_never_collide_between_feedstocks(
     assert len(set(hashes)) == len(hashes)
 
 
-def test_extra_recipes_record_distinct_volumes(workspaces: dict[str, Path]) -> None:
-    """The multi-volume caller's second recipe produces its own validated book."""
-    workspace = workspaces["multi-volume"]
-    bundle = "bundle/second-volume"
-    subprocess.run(
-        (
-            "uv",
-            "run",
-            "bookshelf",
-            "record",
-            "--force",
-            "--recipe",
-            "bookshelf-second-volume.yaml",
-            "--version",
-            VERSION,
-            "--bundle",
-            bundle,
-        ),
-        cwd=workspace,
-        env=ENV,
-        check=True,
-    )
-    subprocess.run(
-        ("uv", "run", "bookshelf", "validate", bundle),
-        cwd=workspace,
-        env=ENV,
-        check=True,
-    )
-    manifest = yaml.safe_load((workspace / bundle / "manifest.lock").read_text())
-    assert manifest["book"]["volume"] == "second-volume"
-    assert manifest["book"]["version"] == VERSION
-
-
-def test_the_caller_recipes_list_one_target_per_volume(
+def test_the_caller_records_one_book_per_volume(
     workspaces: dict[str, Path], tmp_path: Path
 ) -> None:
-    """The multi-volume caller's recipes split into one CI target per volume."""
+    """The multi-volume caller splits into one recordable target per volume."""
     workspace = workspaces["multi-volume"]
     caller = yaml.safe_load(
         (workspace / ".github" / "workflows" / "feedstock-ci.yaml").read_text()
@@ -274,9 +241,39 @@ def test_the_caller_recipes_list_one_target_per_volume(
         env={**ENV, "GITHUB_OUTPUT": str(tmp_path / "outputs")},
         check=True,
     )
-
     targets = json.loads(targets_file.read_text())
     assert sorted((target["volume"], target["version"]) for target in targets) == [
         ("multi-volume", VERSION),
         ("second-volume", VERSION),
     ]
+
+    # The shared `recorded` fixture already covers the first volume.
+    (extra,) = (target for target in targets if target["volume"] != "multi-volume")
+    bundle = f"bundle/{extra['volume']}"
+    subprocess.run(
+        (
+            "uv",
+            "run",
+            "bookshelf",
+            "record",
+            "--force",
+            "--recipe",
+            extra["recipe"],
+            "--version",
+            extra["version"],
+            "--bundle",
+            bundle,
+        ),
+        cwd=workspace,
+        env=ENV,
+        check=True,
+    )
+    subprocess.run(
+        ("uv", "run", "bookshelf", "validate", bundle),
+        cwd=workspace,
+        env=ENV,
+        check=True,
+    )
+    manifest = yaml.safe_load((workspace / bundle / "manifest.lock").read_text())
+    assert manifest["book"]["volume"] == extra["volume"]
+    assert manifest["book"]["version"] == extra["version"]
