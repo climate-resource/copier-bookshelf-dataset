@@ -22,15 +22,18 @@ def test_record_bundle_composite_owns_the_offline_build_path() -> None:
     assert 'uv run python "${GITHUB_ACTION_PATH}/recipe_versions.py"' in action
 
 
-def test_the_composite_action_ships_only_its_recipe_helpers() -> None:
+def test_the_composite_action_ships_only_its_ci_helpers() -> None:
     """The CLI owns record and validate, so no bundle script sits beside it.
 
-    The two helpers stay because both read the recipe for a CI concern:
-    what to key the input cache on, and which versions to record.
+    The helpers read the recipe or the outcomes for a CI concern:
+    the cache key, the versions and targets to record,
+    and whether every target validated.
     """
     assert sorted(path.name for path in ACTION.glob("*.py")) == [
+        "aggregate.py",
         "cache_key.py",
         "recipe_versions.py",
+        "targets.py",
     ]
 
 
@@ -70,8 +73,22 @@ def test_the_composite_action_caches_where_the_sdk_fetches_into() -> None:
     assert "path: .cache" in action
 
 
+def test_the_composite_action_always_reports_an_outcome() -> None:
+    """A failed record still leaves an outcome, so the outcome job can name the book."""
+    action = (ACTION / "action.yml").read_text()
+
+    assert "continue-on-error: true" in action
+    assert "OUTCOME: ${{ steps.record.outcome }}" in action
+    assert '> "${BUNDLE}/outcome.json"' in action
+    assert (
+        "{volume: $volume, version: $version, status: $status, reason: $reason}"
+        in action
+    )
+    assert "write-outcome:" in action
+
+
 def test_ci_reusable_workflow_is_credential_free_and_call_only() -> None:
-    """Feedstock CI runs only when called and exposes no credential surface."""
+    """Feedstock CI runs only when called and takes no secrets."""
     workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
 
     assert "workflow_call:" in workflow
@@ -82,6 +99,51 @@ def test_ci_reusable_workflow_is_credential_free_and_call_only() -> None:
     assert "./.copier-bookshelf-dataset/actions/record-bundle" in workflow
     assert "secrets:" not in workflow
     assert "BOOKSHELF_TOKEN" not in workflow
+
+
+def test_ci_builds_the_merged_candidate() -> None:
+    """A pull request is validated as its head merged with a pinned main."""
+    workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
+    script = (ACTION / "candidate.sh").read_text()
+
+    assert "fetch-depth: 0" in workflow
+    assert "ref: ${{ github.event.pull_request.head.sha || github.sha }}" in workflow
+    assert "MAIN_SHA: ${{ needs.candidate.outputs.main-sha }}" in workflow
+    assert "EXPECTED_TREE: ${{ needs.candidate.outputs.candidate-tree }}" in workflow
+    assert "name: bookshelf-candidate" in workflow
+    assert "merge -q --no-ff --no-edit" in script
+    assert 'echo "conflict=true" >> "${GITHUB_OUTPUT}"' in script
+
+
+def test_ci_records_one_target_per_matrix_leg() -> None:
+    """Every target gets its own leg, so one failure cannot hide the others."""
+    workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
+
+    assert "target: ${{ fromJSON(needs.targets.outputs.targets) }}" in workflow
+    assert workflow.count("fail-fast: false") == 1
+    assert "name: bookshelf-targets" in workflow
+    assert (
+        "name: bookshelf-bundle-${{ matrix.target.volume }}-"
+        "${{ matrix.target.version }}" in workflow
+    )
+    assert "recipe: ${{ matrix.target.recipe }}" in workflow
+    # A re-run of a failed leg uploads under the name its first attempt already used.
+    assert workflow.count("overwrite: true") == workflow.count("upload-artifact@")
+    assert "version: ${{ matrix.target.version }}" in workflow
+
+
+def test_ci_gates_readiness_on_every_expected_book() -> None:
+    """The outcome job always runs and never inherits success from a skipped job."""
+    workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
+
+    assert workflow.count("if: always()") == 1
+    assert workflow.count("name: candidate outcome") == 1
+    assert "needs: [candidate, targets, record]" in workflow
+    assert '--job "record=${RECORD_RESULT}"' in workflow
+    assert "pattern: bookshelf-bundle-*" in workflow
+    assert "concurrency:" in workflow
+    assert "cancel-in-progress: true" in workflow
+    assert "id-token" not in workflow
 
 
 def test_publish_reusable_workflow_uses_deploy_environment_secrets() -> None:
