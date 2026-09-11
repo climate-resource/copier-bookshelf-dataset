@@ -88,7 +88,7 @@ def test_the_composite_action_always_reports_an_outcome() -> None:
 
 
 def test_ci_reusable_workflow_is_credential_free_and_call_only() -> None:
-    """Feedstock CI runs only when called and exposes no credential surface."""
+    """Feedstock CI runs only when called and takes no secrets."""
     workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
 
     assert "workflow_call:" in workflow

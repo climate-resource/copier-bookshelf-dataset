@@ -93,7 +93,9 @@ The CI workflow validates a candidate rather than whatever was checked out:
   so a skipped or cancelled leg counts as a failure.
   It writes a table of the outcomes to the job summary.
 
-None of these jobs holds a credential.
+None of these jobs holds a secret or a write credential.
+The feedstock checkouts keep the read-only `GITHUB_TOKEN`,
+so the jobs can fetch `main` and any blobs the merge needs.
 The required check is the platform's `Bookshelf / validate publication`, not `candidate outcome`.
 The platform also posts the pull request comment and publishes.
 A candidate is only as fresh as the `main` it was merged with,
