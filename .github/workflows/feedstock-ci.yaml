@@ -23,6 +23,15 @@ on:
         required: false
         type: string
         default: main
+      api-base-url:
+        description: Bookshelf API base URL
+        required: false
+        type: string
+        default: https://api.climateresource.com.au/bookshelf
+      sdk-version:
+        description: Exact bookshelf version the trusted preview job installs
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -242,3 +251,102 @@ jobs:
             --job "record=${RECORD_RESULT}" \
             --conflict "${CONFLICT}" \
             | tee -a "${GITHUB_STEP_SUMMARY}"
+
+  # The one job that can mint the OIDC token, so it never runs a line of the pull request.
+  preview:
+    name: upload preview
+    if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: [candidate, targets, record]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out matching feedstock action
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .copier-bookshelf-dataset
+          persist-credentials: false
+
+      # A job that never ran leaves nothing to download, which the next step reports.
+      - name: Download the target list
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: bookshelf-targets
+          path: artifacts
+
+      - name: Download every bundle
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          pattern: bookshelf-bundle-*
+          path: artifacts
+
+      - name: Resolve the upload inputs
+        run: |
+          set -euo pipefail
+          python3 .copier-bookshelf-dataset/actions/record-bundle/preview_inputs.py \
+            --artifacts artifacts \
+            --summary "${GITHUB_STEP_SUMMARY}" >> "${GITHUB_ENV}"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Install the pinned SDK
+        env:
+          SDK_VERSION: ${{ inputs.sdk-version }}
+        run: |
+          set -euo pipefail
+          uv tool install "bookshelf==${SDK_VERSION}"
+          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+
+      # The identity comes from the event and the candidate job, which PR code cannot overwrite.
+      - name: Upload the preview
+        env:
+          API_BASE_URL: ${{ inputs.api-base-url }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MAIN_SHA: ${{ needs.candidate.outputs.main-sha }}
+          CANDIDATE_TREE: ${{ needs.candidate.outputs.candidate-tree }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2086 # BUNDLES is a whitespace separated list
+          bookshelf preview upload ${BUNDLES} \
+            --repository "${GITHUB_REPOSITORY}" \
+            --pr "${PR_NUMBER}" \
+            --pr-url "${PR_URL}" \
+            --head-sha "${HEAD_SHA}" \
+            --main-sha "${MAIN_SHA}" \
+            --tree "${CANDIDATE_TREE}" \
+            --run-id "${GITHUB_RUN_ID}" \
+            --api-url "${API_BASE_URL}" \
+            --json > preview.json
+
+      # A failed preview still exists, so its links are reported too.
+      - name: Report the preview
+        if: ${{ !cancelled() && hashFiles('preview.json') != '' }}
+        run: |
+          set -euo pipefail
+          jq -e .preview_id preview.json > /dev/null || exit 0
+          {
+            echo "## Preview"
+            echo
+            jq -r '"- Preview: `\(.preview_id)` (\(.state))",
+                   "- Proposal: \(.proposal_url)",
+                   "- Books: \(.preview_url)"' preview.json
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload the preview summary
+        if: ${{ !cancelled() && hashFiles('preview.json') != '' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: bookshelf-preview
+          path: preview.json
+          if-no-files-found: error
+          overwrite: true

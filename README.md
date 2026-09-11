@@ -92,6 +92,20 @@ The CI workflow validates a candidate rather than whatever was checked out:
   It passes only when every target has exactly one `validated` outcome and every job before it succeeded,
   so a skipped or cancelled leg counts as a failure.
   It writes a table of the outcomes to the job summary.
+- The `upload preview` job stores the candidate's books on the platform for reviewers.
+  It is the only job granted `id-token: write`,
+  so it proves who it is with the run's GitHub Actions OIDC token rather than a credential.
+
+The preview job never checks the feedstock out.
+Pull request code is untrusted, and any step in a job that can mint the token can use it,
+so the job checks out only this template's helpers and installs the SDK from the index.
+The `sdk-version` input is the exact `bookshelf` version it installs, and it is required.
+The `api-base-url` input picks the deployment, defaulting to production.
+A target that never produced a bundle fails the job without uploading,
+so the platform's check stays at "expected" and still blocks the merge.
+A pull request from a fork skips the job,
+because a fork cannot mint a token for the upstream repository.
+The platform's check tells the author that forks are unsupported.
 
 None of these jobs holds a secret or a write credential.
 The feedstock checkouts keep the read-only `GITHUB_TOKEN`,

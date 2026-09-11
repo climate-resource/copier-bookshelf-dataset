@@ -3,6 +3,7 @@
 import json
 import re
 
+import yaml
 from conftest import ACTION, ROOT, uses_lines
 
 WORKFLOWS = ROOT / ".github" / "workflows"
@@ -32,6 +33,7 @@ def test_the_composite_action_ships_only_its_ci_helpers() -> None:
     assert sorted(path.name for path in ACTION.glob("*.py")) == [
         "aggregate.py",
         "cache_key.py",
+        "preview_inputs.py",
         "recipe_versions.py",
         "targets.py",
     ]
@@ -136,14 +138,49 @@ def test_ci_gates_readiness_on_every_expected_book() -> None:
     """The outcome job always runs and never inherits success from a skipped job."""
     workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
 
-    assert workflow.count("if: always()") == 1
+    assert workflow.count("if: always()") == 2
     assert workflow.count("name: candidate outcome") == 1
     assert "needs: [candidate, targets, record]" in workflow
     assert '--job "record=${RECORD_RESULT}"' in workflow
     assert "pattern: bookshelf-bundle-*" in workflow
     assert "concurrency:" in workflow
     assert "cancel-in-progress: true" in workflow
-    assert "id-token" not in workflow
+
+
+def test_ci_uploads_the_preview_from_a_trusted_job() -> None:
+    """One job mints the OIDC token, and it runs nothing out of the pull request."""
+    workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
+    preview = yaml.safe_load(workflow)["jobs"]["preview"]
+
+    assert workflow.count("id-token: write") == 1
+    assert preview["permissions"] == {"contents": "read", "id-token": "write"}
+    assert preview["needs"] == ["candidate", "targets", "record"]
+    assert "head.repo.full_name == github.repository" in preview["if"]
+
+    # The feedstock is never checked out here, so only this template's helpers are.
+    checkouts = [
+        step for step in preview["steps"] if "actions/checkout" in step.get("uses", "")
+    ]
+    assert [
+        (step["with"]["repository"], step["with"]["ref"]) for step in checkouts
+    ] == [("${{ job.workflow_repository }}", "${{ job.workflow_sha }}")]
+
+    upload = next(
+        step for step in preview["steps"] if step["name"] == "Upload the preview"
+    )
+    assert upload["env"]["HEAD_SHA"] == "${{ github.event.pull_request.head.sha }}"
+    assert upload["env"]["MAIN_SHA"] == "${{ needs.candidate.outputs.main-sha }}"
+    assert (
+        upload["env"]["CANDIDATE_TREE"]
+        == "${{ needs.candidate.outputs.candidate-tree }}"
+    )
+
+    assert "sdk-version:" in workflow
+    assert "api-base-url:" in workflow
+    assert 'uv tool install "bookshelf==${SDK_VERSION}"' in workflow
+    assert "bookshelf preview upload ${BUNDLES}" in workflow
+    assert "preview_inputs.py" in workflow
+    assert "name: bookshelf-preview" in workflow
 
 
 def test_publish_reusable_workflow_uses_deploy_environment_secrets() -> None:
