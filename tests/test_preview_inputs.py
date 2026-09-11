@@ -149,3 +149,33 @@ def test_the_script_reports_an_empty_target_list(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "the target list is empty" in result.stderr
+
+
+def test_the_script_refuses_an_identity_that_could_inject_environment(
+    tmp_path: Path,
+) -> None:
+    """Earlier jobs run pull request code, so nothing forged may reach `$GITHUB_ENV`."""
+    artifacts = lay_out(tmp_path, ("v1", "v2"))
+    injected = CANDIDATE["head_sha"] + "\nBASH_ENV=/tmp/evil"
+    forged = {**CANDIDATE, "head_sha": injected}
+    write_json(artifacts / "candidate.json", forged)
+
+    result = run_script("--artifacts", str(artifacts))
+
+    assert result.returncode == 1
+    assert "candidate head_sha is not a Git object id" in result.stderr
+    assert not result.stdout
+
+
+def test_the_script_refuses_a_target_with_an_unsafe_name(tmp_path: Path) -> None:
+    artifacts = lay_out(tmp_path, ("v1", "v2"))
+    write_json(
+        artifacts / "targets.json",
+        [*TARGETS, {"recipe": "bookshelf.yaml", "volume": "example", "version": ".."}],
+    )
+
+    result = run_script("--artifacts", str(artifacts))
+
+    assert result.returncode == 1
+    assert "unsafe volume or version" in result.stderr
+    assert not result.stdout

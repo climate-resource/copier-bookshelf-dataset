@@ -6,9 +6,16 @@ so it uses nothing beyond the standard library.
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
+
+# Earlier jobs run pull request code,
+# so every value bound for `$GITHUB_ENV` or a path is checked.
+SHA = re.compile(r"[0-9a-f]{40}([0-9a-f]{24})?")
+NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+IDENTITY = ("head_sha", "main_sha", "candidate_tree")
 
 
 def describe(target: dict[str, Any]) -> str:
@@ -21,6 +28,26 @@ def bundle_directory(artifacts: Path, target: dict[str, Any]) -> Path:
     volume = str(target.get("volume", ""))
     version = str(target.get("version", ""))
     return artifacts / f"bookshelf-bundle-{volume}-{version}" / version
+
+
+def invalid_candidate(candidate: dict[str, Any]) -> list[str]:
+    """Name the identity fields that are not a bare Git object id."""
+    return [
+        f"candidate {field} is not a Git object id"
+        for field in IDENTITY
+        if not SHA.fullmatch(str(candidate.get(field, "")))
+    ]
+
+
+def invalid_targets(targets: list[dict[str, Any]]) -> list[str]:
+    """Name the targets whose volume or version is not a plain name."""
+    return [
+        f"target {json.dumps(target)} has an unsafe volume or version"
+        for target in targets
+        if not all(
+            NAME.fullmatch(str(target.get(key, ""))) for key in ("volume", "version")
+        )
+    ]
 
 
 def resolve(
@@ -83,8 +110,16 @@ def main() -> None:
         problems.append("no candidate identity was produced")
     if targets is None:
         problems.append("no target list was produced")
-    elif not targets:
+    elif not isinstance(targets, list) or not targets:
         problems.append("the target list is empty")
+    if isinstance(candidate, dict):
+        problems += invalid_candidate(candidate)
+    elif candidate is not None:
+        problems.append("the candidate identity is not an object")
+    if isinstance(targets, list) and all(isinstance(t, dict) for t in targets):
+        problems += invalid_targets(targets)
+    elif targets:
+        problems.append("the target list is not a list of objects")
 
     bundles: list[Path] = []
     if not problems:
