@@ -214,3 +214,36 @@ def test_recorded_resources_never_collide_between_feedstocks(
     ]
 
     assert len(set(hashes)) == len(hashes)
+
+
+def test_extra_recipes_record_distinct_volumes(workspaces: dict[str, Path]) -> None:
+    """The multi-volume caller's second recipe produces its own validated book."""
+    workspace = workspaces["multi-volume"]
+    bundle = "bundle/second-volume"
+    subprocess.run(
+        (
+            "uv",
+            "run",
+            "bookshelf",
+            "record",
+            "--force",
+            "--recipe",
+            "bookshelf-second-volume.yaml",
+            "--version",
+            VERSION,
+            "--bundle",
+            bundle,
+        ),
+        cwd=workspace,
+        env=ENV,
+        check=True,
+    )
+    subprocess.run(
+        ("uv", "run", "bookshelf", "validate", bundle),
+        cwd=workspace,
+        env=ENV,
+        check=True,
+    )
+    manifest = yaml.safe_load((workspace / bundle / "manifest.lock").read_text())
+    assert manifest["book"]["volume"] == "second-volume"
+    assert manifest["book"]["version"] == VERSION

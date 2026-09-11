@@ -2,6 +2,7 @@ name: Feedstock CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
   push:
     branches:
       - main
@@ -11,7 +12,14 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
-  record:
+  bookshelf:
+    name: Bookshelf
     uses: climate-resource/copier-bookshelf-dataset/.github/workflows/feedstock-ci.yaml@HEAD
+    with:
+      recipes: >-
+        bookshelf.yaml
+      main-ref: main
+      sdk-version: "1.0.0b8"

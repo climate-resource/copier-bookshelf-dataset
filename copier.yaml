@@ -42,6 +42,33 @@ project_url:
         That doesn't look like a valid URL, please check. Only GitHub URLs are supported.
         {% endif %}
 
+bookshelf_sdk_version:
+    type: str
+    help: Which exact Bookshelf SDK version should the feedstock and preview job use?
+    default: "1.0.0b8"
+
+extra_recipes:
+    type: yaml
+    help: >-
+        Which extra volume names should get a bookshelf-<name>.yaml recipe?
+        Enter a YAML list.
+    default: []
+    validator: >-
+        {% if extra_recipes is not sequence or extra_recipes is string or extra_recipes is mapping %}
+        extra_recipes must be a list of volume names
+        {% else %}
+        {% for name in extra_recipes %}
+        {% if name is not string or not (name | regex_search('^[a-z][a-z0-9-]+$')) %}
+        extra_recipes names must be lowercase and use hyphens for word separators
+        {% endif %}
+        {% endfor %}
+        {% if extra_recipes | unique | list | length != extra_recipes | length %}
+        extra_recipes names must be unique
+        {% endif %}
+        {% if dataset_name in extra_recipes %}
+        extra_recipes must not repeat dataset_name
+        {% endif %}
+        {% endif %}
 
 _envops:
     trim_blocks: true

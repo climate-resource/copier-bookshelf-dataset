@@ -67,68 +67,59 @@ documents every field a recipe can carry.
 
 ## Feedstock automation
 
-A bundle holds one book, so each version is recorded into its own `bundle/<version>` directory.
-CI records every version the recipe declares, and the publish workflow replays every one of them.
-Publishing an unchanged book is idempotent, so a version that has not moved keeps its edition.
-Pass a `version` input to either reusable workflow to narrow that to one book.
+Opening or reopening a pull request, or pushing to its branch, builds and uploads a preview.
+The platform posts one pull request comment and updates it as the preview changes.
+It owns the required `Bookshelf / validate publication` check and publishes when the pull request merges.
+Closing without merging leaves the preview unpublished, with closure handled by the platform.
+Pushes to `main`, the weekly schedule and manual dispatch build and validate without uploading previews.
 
-The CI workflow validates a candidate rather than whatever was checked out:
+On a pull request, CI merges the head with the current `main` to build the candidate.
+Every recording job checks that it rebuilt the same merged tree, and a merge conflict fails the run.
+CI records and validates each `(volume, version)` target in its own matrix job.
+The `candidate outcome` job reports whether every expected target validated.
+The platform's publication check is the required check in the repository ruleset.
 
-- On a pull request, the candidate is the head merged with the current `main`.
-  The `candidate` job pins that `main` commit,
-  and every later job rebuilds the same merge and checks it gets the same tree.
-  A merge conflict fails the run rather than recording either side.
-- On any other event, the candidate is the commit being built.
-- The candidate identity is uploaded as the `bookshelf-candidate` artifact.
-  It holds the head SHA, the main SHA and the merged tree.
-- The `targets` job lists one target per `(volume, version)` across the `recipes` input.
-  The input defaults to `bookshelf.yaml`.
-  It uploads the list as `bookshelf-targets`.
-  It fails on an empty list or on a target that two recipes both declare.
-- The `record` job records and validates each target in its own matrix leg.
-  Each leg uploads `bookshelf-bundle-<volume>-<version>`,
-  holding the bundle and an `outcome.json` that says `validated` or `failed`.
-- The `candidate outcome` job always runs.
-  It passes only when every target has exactly one `validated` outcome and every job before it succeeded,
-  so a skipped or cancelled leg counts as a failure.
-  It writes a table of the outcomes to the job summary.
-- The `upload preview` job stores the candidate's books on the platform for reviewers.
-  It is the only job granted `id-token: write`,
-  so it proves who it is with the run's GitHub Actions OIDC token rather than a credential.
+The `Bookshelf` caller passes `recipes`, `main-ref: main` and `sdk-version` to the reusable workflow.
+The `bookshelf_sdk_version` Copier answer pins the same exact SDK version in CI and `pyproject.toml`.
+The `extra_recipes` answer is a YAML list of additional volume names, with an empty list as its default.
+For example, `[second-volume]` adds `bookshelf-second-volume.yaml` alongside `bookshelf.yaml`.
+The caller passes both recipes, so CI records every book in both volumes.
+Each extra recipe initially shares the scaffold's build file and input, ready to adapt to its own data.
 
-The preview job never checks the feedstock out.
-Pull request code is untrusted, and any step in a job that can mint the token can use it,
-so the job checks out only this template's helpers and installs the SDK from the index.
-The `sdk-version` input is the exact `bookshelf` version it installs, and it is required.
-The `api-base-url` input picks the deployment, defaulting to production.
-A target that never produced a bundle fails the job without uploading,
-so the platform's check stays at "expected" and still blocks the merge.
-A pull request from a fork skips the job,
-because a fork cannot mint a token for the upstream repository.
-The platform's check tells the author that forks are unsupported.
+Only the trusted `upload preview` job can mint a GitHub Actions OIDC token.
+It checks out this template's helpers and installs the pinned SDK without checking out pull request code.
+The generated CI caller needs no secrets, environment or token URL.
+The `api-base-url` reusable input selects the deployment and defaults to production.
+A target that produces no bundle fails the upload job and leaves the platform check blocking the merge.
+Fork pull requests skip preview upload because they cannot mint a token for the upstream repository.
 
-None of these jobs holds a secret or a write credential.
-The feedstock checkouts keep the read-only `GITHUB_TOKEN`,
-so the jobs can fetch `main` and any blobs the merge needs.
-The required check is the platform's `Bookshelf / validate publication`, not `candidate outcome`.
-The platform also posts the pull request comment and publishes.
-A candidate is only as fresh as the `main` it was merged with,
-so readiness relies on the feedstock ruleset requiring branches to be up to date before merging.
+Reusable workflows live under `.github/workflows`, with their composite action in `actions/record-bundle`.
+Generated callers pin them to the Copier ref used to generate the feedstock.
+The reusable workflow checks out its helpers from its own commit.
 
-This public repository hosts the reusable feedstock workflows in `.github/workflows/feedstock-ci.yaml` and `.github/workflows/feedstock-publish.yaml`.
-Their composite action lives in `actions/record-bundle`.
-Generated callers pin the reusable workflows to the exact Copier ref that generated the feedstock.
-The reusable workflow then checks out its composite action from the workflow's own commit, so the caller, workflow, and action cannot drift apart.
+A feedstock's first publish needs each volume created once with `bookshelf volume create`.
+`bookshelf publish` will not create one, so a missing volume fails with `Series 'NAME' not found`.
 
-A feedstock's first publish needs its volume created once with `bookshelf volume create`.
-`bookshelf publish` will not create one, so without it the publish workflow fails
-with `Series 'NAME' not found`.
+The release trigger is still active until #31 removes it.
+The PR publication and release publication paths must not both be enabled on the same repository.
+Before enabling PR publication, disable the legacy `Feedstock publish` workflow in that repository.
+The legacy path uses `deploy` with `BOOKSHELF_CLIENT_ID` and `BOOKSHELF_CLIENT_SECRET` environment secrets,
+and the `BOOKSHELF_TOKEN_URL` repository variable.
+The legacy publish caller uses `secrets: inherit`.
+Its reusable publish job carries `environment: deploy`, which resolves those environment secrets at job start.
+These credentials belong only to the legacy release path.
 
-Publishing uses the feedstock repository environment named `deploy`.
-Configure `BOOKSHELF_CLIENT_ID` and `BOOKSHELF_CLIENT_SECRET` as environment secrets on that environment.
-Set the public `BOOKSHELF_TOKEN_URL` repository variable to the WorkOS AuthKit token endpoint.
-Generated publish callers use `secrets: inherit`.
-The reusable publish job carries `environment: deploy`, so those environment secrets are resolved when that job starts.
+## Repository rules
+
+A feedstock repository using PR publication must:
+
+1. Have the Bookshelf GitHub App installed with access to the repository.
+2. Require `Bookshelf / validate publication` in its ruleset.
+3. Require branches to be up to date before merging.
+4. Grant `id-token: write` to the CI workflow, which the generated caller already does.
+
+The up-to-date rule keeps the candidate's `main` commit current when the pull request merges.
+Follow the [PR publication pilot](docs/runbooks/pr-publication-pilot.md) to verify the rules and flow.
 
 ## Releasing
 
@@ -140,7 +131,7 @@ tags, and drafts the GitHub release in a single run.
 The work is delegated to the shared `climate-resource/github-actions` bump workflow,
 so both this repository and every generated feedstock call the same thing.
 
-For a generated feedstock, publishing that draft release by hand is what triggers the feedstock publish workflow.
+For a feedstock still using the legacy release path, publishing the draft by hand triggers publication.
 A release published by CI would not fire it,
 because releases created with `GITHUB_TOKEN` do not trigger other workflows.
 
@@ -151,7 +142,8 @@ or let Renovate open the pull request for them.
 
 A green test suite proves the render is valid, not that the rendered feedstock still works
 against a live Bookshelf.
-The [release pilot](docs/runbooks/release-pilot.md) closes that gap.
+The [release pilot](docs/runbooks/release-pilot.md) checks the legacy release path.
+Use the PR publication pilot above for repositories that publish on merge.
 It drives a tagged release through the `bookshelf-test` feedstock and asks the API what landed:
 
 ```bash

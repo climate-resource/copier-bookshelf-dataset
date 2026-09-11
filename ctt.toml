@@ -27,3 +27,13 @@ dataset_name = "ngfs-scenarios"
 dataset_name_human = 'NGFS "Net Zero" Scenarios'
 dataset_description = "Scenario data for O'Brien's review: quoted, apostrophised and colonised."
 project_url = "https://github.com/climate-resource/bookshelf-ngfs-scenarios"
+
+# A second recipe gives the CI caller two distinct volumes.
+[output."tests/regression/ctt/multi-volume"]
+author = "Grace Hopper"
+author_email = "grace.hopper@climate-resource.com"
+dataset_name = "multi-volume"
+dataset_name_human = "Multi-volume Dataset"
+dataset_description = "Two volumes built from one feedstock."
+project_url = "https://github.com/climate-resource/bookshelf-multi-volume"
+extra_recipes = ["second-volume"]

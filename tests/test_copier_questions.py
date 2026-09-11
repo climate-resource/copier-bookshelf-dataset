@@ -24,10 +24,10 @@ def validator_environment() -> jinja2.Environment:
     )
 
 
-def rejection(question: str, answer: str) -> str:
+def rejection(question: str, answer: object) -> str:
     """Render a question's validator, returning the error it reports."""
     template = validator_environment().from_string(COPIER[question]["validator"])
-    return template.render(**{question: answer}).strip()
+    return template.render(**{"dataset_name": "example", question: answer}).strip()
 
 
 def test_validators_use_escape_sequences_jinja_understands() -> None:
@@ -41,7 +41,7 @@ def test_validators_use_escape_sequences_jinja_understands() -> None:
                 environment.from_string(question["validator"])
 
 
-def test_every_question_is_a_string_with_help() -> None:
+def test_every_question_has_a_type_and_help() -> None:
     """A prompt without help is a prompt nobody can answer correctly."""
     assert set(QUESTIONS) == {
         "author",
@@ -50,10 +50,12 @@ def test_every_question_is_a_string_with_help() -> None:
         "dataset_name_human",
         "dataset_description",
         "project_url",
+        "bookshelf_sdk_version",
+        "extra_recipes",
     }
 
     for name, question in QUESTIONS.items():
-        assert question["type"] == "str", name
+        assert question["type"] == ("yaml" if name == "extra_recipes" else "str"), name
         assert question["help"].strip(), name
         assert "placeholder" in question or "default" in question, name
 
@@ -160,3 +162,26 @@ def test_the_scaffold_commit_is_attributed_to_the_author() -> None:
 
     assert 'user.name="{{ author }}"' in makefile
     assert 'user.email="{{ author_email }}"' in makefile
+
+
+def test_preview_question_defaults() -> None:
+    """The SDK has one default and extra volumes are opt in."""
+    assert COPIER["bookshelf_sdk_version"]["default"] == "1.0.0b8"
+    assert COPIER["extra_recipes"]["default"] == []
+
+
+@pytest.mark.parametrize(
+    "names", [[], ["second-volume"], ["second-volume", "third-volume"]]
+)
+def test_extra_recipes_accepts_lists_of_volume_names(names: list[str]) -> None:
+    """Each entry becomes a recipe filename and a distinct volume."""
+    assert not rejection("extra_recipes", names)
+
+
+@pytest.mark.parametrize(
+    "names",
+    ["second-volume", {}, ["../escape"], ["Upper"], ["same", "same"], ["example"], [1]],
+)
+def test_extra_recipes_rejects_invalid_names(names: object) -> None:
+    """Invalid paths and duplicate volumes cannot enter the caller."""
+    assert rejection("extra_recipes", names)

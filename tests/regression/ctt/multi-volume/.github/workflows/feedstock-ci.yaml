@@ -17,12 +17,10 @@ permissions:
 jobs:
   bookshelf:
     name: Bookshelf
-    uses: climate-resource/copier-bookshelf-dataset/.github/workflows/feedstock-ci.yaml@{{ _copier_conf.vcs_ref or _copier_answers._commit }}
+    uses: climate-resource/copier-bookshelf-dataset/.github/workflows/feedstock-ci.yaml@HEAD
     with:
       recipes: >-
         bookshelf.yaml
-{% for recipe in extra_recipes %}
-        bookshelf-{{ recipe }}.yaml
-{% endfor %}
+        bookshelf-second-volume.yaml
       main-ref: main
-      sdk-version: {{ bookshelf_sdk_version | tojson }}
+      sdk-version: "1.0.0b8"
