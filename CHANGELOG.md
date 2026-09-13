@@ -21,6 +21,15 @@ from the examples given in that link.
 
 <!-- towncrier release notes start -->
 
+## copier-bookshelf-dataset v0.4.1 (2026-09-13)
+
+### Bug Fixes
+
+- Found each target's bundle whether its artifact landed in a directory of its own or flat.
+  A pull request with one book downloads a single bundle artifact,
+  which unpacks into the download path itself, so the preview upload refused to run. ([#36](https://github.com/climate-resource/copier-bookshelf-dataset/pull/36))
+
+
 ## copier-bookshelf-dataset v0.4.0 (2026-09-13)
 
 ### Breaking Changes
