@@ -166,7 +166,7 @@ def test_the_scaffold_commit_is_attributed_to_the_author() -> None:
 
 
 def test_preview_question_defaults() -> None:
-    """The SDK default is one exact version and extra volumes are opt in."""
+    """The SDK default is one exact version and extra volumes are opt-in."""
     assert re.fullmatch(
         r"\d+\.\d+\.\d+((a|b|rc)\d+)?", COPIER["bookshelf_sdk_version"]["default"]
     )

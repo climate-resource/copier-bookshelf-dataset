@@ -72,7 +72,7 @@
       "enabled": false
     },
     {
-      "description": "The CI caller installs the same exact SDK, so `copier update` moves the pin, not Renovate",
+      "description": "The CI caller installs the exact SDK, so `copier update` moves the pin, not Renovate",
       "matchManagers": [
         "pep621"
       ],

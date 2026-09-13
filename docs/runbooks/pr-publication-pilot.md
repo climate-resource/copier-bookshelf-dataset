@@ -16,7 +16,7 @@ Record the repository, template ref, SDK version, pull request URLs and workflow
 - [ ] Confirm every recipe volume exists, creating it once with `uv run bookshelf volume create` if needed.
 
 The release trigger remains in the template until #31 removes it.
-Both publication paths must not be enabled on the same repository.
+The PR and release publication paths must not both be enabled on the same repository.
 The PR caller needs no secrets, environment, token URL, comment step or withdrawal step.
 The platform owns the check, comment, merge publication and closure handling.
 
