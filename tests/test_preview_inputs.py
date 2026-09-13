@@ -51,6 +51,24 @@ def lay_out(
     return artifacts
 
 
+def lay_out_flat(tmp_path: Path, versions: tuple[str, ...]) -> Path:
+    """Lay one artifact out the way a lone pattern match lands, with no directory."""
+    artifacts = tmp_path / "artifacts"
+    write_json(artifacts / "targets.json", TARGETS)
+    for version in versions:
+        write_json(
+            artifacts / "outcome.json",
+            {
+                "volume": "example",
+                "version": version,
+                "status": "validated",
+                "reason": "",
+            },
+        )
+        (artifacts / version).mkdir(parents=True)
+    return artifacts
+
+
 def run_script(*args: str) -> subprocess.CompletedProcess[str]:
     """Run the script the way the workflow does, on a bare interpreter."""
     return subprocess.run(
@@ -179,3 +197,25 @@ def test_the_script_refuses_a_target_that_walks_out_of_its_artifact(
 
     assert result.returncode == 1
     assert "unsafe volume or version" in result.stderr
+
+
+def test_a_lone_artifact_that_landed_flat_resolves(tmp_path: Path) -> None:
+    """One matching artifact is unpacked into the download path itself."""
+    artifacts = lay_out_flat(tmp_path, ("v1", "v2"))
+
+    bundles, problems = PREVIEW_INPUTS.resolve(artifacts, TARGETS)
+
+    assert not problems
+    assert bundles == [artifacts / "v1", artifacts / "v2"]
+
+
+def test_a_flat_artifact_reports_its_reason(tmp_path: Path) -> None:
+    artifacts = lay_out_flat(tmp_path, ("v1",))
+    write_json(
+        artifacts / "outcome.json",
+        {"volume": "example", "version": "v2", "status": "failed", "reason": "boom"},
+    )
+
+    _, problems = PREVIEW_INPUTS.resolve(artifacts, TARGETS)
+
+    assert problems == ["example v2: no bundle was recorded (boom)"]
