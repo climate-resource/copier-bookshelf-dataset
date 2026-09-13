@@ -21,6 +21,46 @@ from the examples given in that link.
 
 <!-- towncrier release notes start -->
 
+## copier-bookshelf-dataset v0.4.0 (2026-09-13)
+
+### Breaking Changes
+
+- Replaced the single `Record and validate bundles` CI job
+  with the `candidate`, `targets`, `record` and `candidate outcome` jobs.
+  The `bookshelf-bundle` artifact became one `bookshelf-bundle-<volume>-<version>` artifact per book.
+  A branch ruleset that requires the old check name has to be updated after moving to this template version. ([#33](https://github.com/climate-resource/copier-bookshelf-dataset/pull/33))
+- Made `sdk-version` a required input of the reusable feedstock CI workflow.
+  Its `upload preview` job also asks the caller to grant `id-token: write`,
+  so a caller that moved to this template version without both failed at startup. ([#34](https://github.com/climate-resource/copier-bookshelf-dataset/pull/34))
+- Renamed the generated CI caller's job from `record` to `Bookshelf`,
+  so its checks now report as `Bookshelf / ...` instead of `record / ...`.
+  A ruleset that required the old check names has to be updated after moving to this template version.
+  The generated `pyproject.toml` also pinned `bookshelf` to the exact `bookshelf_sdk_version` answer,
+  so a feedstock has to run `uv lock` after `copier update`. ([#35](https://github.com/climate-resource/copier-bookshelf-dataset/pull/35))
+
+### Features
+
+- Changed feedstock CI to validate a pull request as its head merged with the current `main`,
+  and to record that candidate's identity.
+  Each `(volume, version)` target is now recorded in its own matrix leg with an `outcome.json`,
+  and a `candidate outcome` job fails unless every expected book was validated. ([#33](https://github.com/climate-resource/copier-bookshelf-dataset/pull/33))
+- Added an `upload preview` job to the reusable feedstock CI workflow.
+  It stored the candidate's books on the Bookshelf platform for reviewers,
+  authenticating with the run's GitHub Actions OIDC token rather than a credential.
+  The workflow gained an optional `api-base-url` input. ([#34](https://github.com/climate-resource/copier-bookshelf-dataset/pull/34))
+- Rolled PR preview publication out through the generated CI caller with a shared SDK pin.
+  Added an `extra_recipes` answer for more volumes, with a multi-volume regression fixture.
+  Documented the repository rules a feedstock needs for PR publication. ([#35](https://github.com/climate-resource/copier-bookshelf-dataset/pull/35))
+
+### Improvements
+
+- Raised the scaffolded `bookshelf` floor to 1.0.0b7. ([#32](https://github.com/climate-resource/copier-bookshelf-dataset/pull/32))
+
+### Improved Documentation
+
+- Documented the `bookshelf-feedstock` GitHub topic in the new-repository steps. ([#25](https://github.com/climate-resource/copier-bookshelf-dataset/pull/25))
+
+
 ## copier-bookshelf-dataset v0.3.0b1 (2026-08-31)
 
 ### Improvements
