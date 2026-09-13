@@ -1,0 +1,42 @@
+# The recipe carries every fact about the books this feedstock produces.
+# Format: https://github.com/climate-resource/bookshelf/blob/main/docs/explanation/recipe-format.md
+volume:
+  name: multi-volume
+  maintainers:
+    - name: "Grace Hopper"
+      email: grace.hopper@climate-resource.com
+  keywords:
+    - multi-volume
+
+# Defaults for every book
+# Any overrides for a specific book win
+defaults:
+  title: "Multi-volume Dataset"
+  description: "Two volumes built from one feedstock."
+  publisher: Climate Resource
+  repository_url: https://github.com/climate-resource/bookshelf-multi-volume
+  visibility: public
+  authors:
+    - name: "Grace Hopper"
+      email: grace.hopper@climate-resource.com
+  resources:
+    # A resource type never moves between books, so it is stated once here.
+    raw:
+      type: tabular
+
+build:
+  notebook: build.py
+
+# One entry per upstream version. `bookshelf record --version` picks one.
+books:
+  - version: "v0.1.0"
+    license: CC-BY-4.0
+    license_url: https://creativecommons.org/licenses/by/4.0/
+    description: >-
+      The scaffolded example book.
+      Replace it with the first real version of Multi-volume Dataset.
+    resources:
+      # A checked-in input needs no sha256.
+      # Replace it with `uri:` and the `sha256:` the fetch is checked against.
+      raw:
+        path: inputs/raw.csv

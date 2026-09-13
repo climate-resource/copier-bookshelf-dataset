@@ -3,8 +3,10 @@ _commit: HEAD
 _src_path: ../../../../copier-bookshelf-dataset
 author: Renée O'Brien
 author_email: renee.obrien@climate-resource.com
+bookshelf_sdk_version: 1.0.0b8
 dataset_description: 'Scenario data for O''Brien''s review: quoted, apostrophised
     and colonised.'
 dataset_name: ngfs-scenarios
 dataset_name_human: NGFS "Net Zero" Scenarios
+extra_recipes: []
 project_url: https://github.com/climate-resource/bookshelf-ngfs-scenarios

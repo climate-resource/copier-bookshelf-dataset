@@ -1,0 +1,12 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: HEAD
+_src_path: ../../../../copier-bookshelf-dataset
+author: Grace Hopper
+author_email: grace.hopper@climate-resource.com
+bookshelf_sdk_version: 1.0.0b8
+dataset_description: Two volumes built from one feedstock.
+dataset_name: multi-volume
+dataset_name_human: Multi-volume Dataset
+extra_recipes:
+- second-volume
+project_url: https://github.com/climate-resource/bookshelf-multi-volume

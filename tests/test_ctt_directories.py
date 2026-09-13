@@ -10,6 +10,7 @@ directory and prepared with `make initial-setup` before it can record anything.
 Preparing and recording are the expensive parts, so both happen once per session.
 """
 
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -17,7 +18,7 @@ from typing import Any
 
 import pytest
 import yaml
-from conftest import BUNDLE, ENV, FEEDSTOCKS, VERSION, Feedstock
+from conftest import ACTION, BUNDLE, ENV, FEEDSTOCKS, VERSION, Feedstock
 
 pytestmark = pytest.mark.slow
 
@@ -214,3 +215,65 @@ def test_recorded_resources_never_collide_between_feedstocks(
     ]
 
     assert len(set(hashes)) == len(hashes)
+
+
+def test_the_caller_records_one_book_per_volume(
+    workspaces: dict[str, Path], tmp_path: Path
+) -> None:
+    """The multi-volume caller splits into one recordable target per volume."""
+    workspace = workspaces["multi-volume"]
+    caller = yaml.safe_load(
+        (workspace / ".github" / "workflows" / "feedstock-ci.yaml").read_text()
+    )
+    recipes = caller["jobs"]["bookshelf"]["with"]["recipes"].split()
+    targets_file = tmp_path / "targets.json"
+    subprocess.run(
+        (
+            "uv",
+            "run",
+            "python",
+            str(ACTION / "targets.py"),
+            "--output",
+            str(targets_file),
+            *recipes,
+        ),
+        cwd=workspace,
+        env={**ENV, "GITHUB_OUTPUT": str(tmp_path / "outputs")},
+        check=True,
+    )
+    targets = json.loads(targets_file.read_text())
+    assert sorted((target["volume"], target["version"]) for target in targets) == [
+        ("multi-volume", VERSION),
+        ("second-volume", VERSION),
+    ]
+
+    # The shared `recorded` fixture already covers the first volume.
+    (extra,) = (target for target in targets if target["volume"] != "multi-volume")
+    bundle = f"bundle/{extra['volume']}"
+    subprocess.run(
+        (
+            "uv",
+            "run",
+            "bookshelf",
+            "record",
+            "--force",
+            "--recipe",
+            extra["recipe"],
+            "--version",
+            extra["version"],
+            "--bundle",
+            bundle,
+        ),
+        cwd=workspace,
+        env=ENV,
+        check=True,
+    )
+    subprocess.run(
+        ("uv", "run", "bookshelf", "validate", bundle),
+        cwd=workspace,
+        env=ENV,
+        check=True,
+    )
+    manifest = yaml.safe_load((workspace / bundle / "manifest.lock").read_text())
+    assert manifest["book"]["volume"] == extra["volume"]
+    assert manifest["book"]["version"] == extra["version"]
