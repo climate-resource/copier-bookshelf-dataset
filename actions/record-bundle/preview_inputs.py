@@ -27,11 +27,21 @@ def unsafe_targets(targets: list[Any]) -> list[str]:
     ]
 
 
-def no_bundle_reason(artifact: Path) -> str:
+def artifact_roots(artifacts: Path, volume: str, version: str) -> list[Path]:
+    """Where one target's artifact can land.
+
+    A pattern download nests each artifact under its own name.
+    A lone match lands flat instead.
+    """
+    return [artifacts / f"bookshelf-bundle-{volume}-{version}", artifacts]
+
+
+def no_bundle_reason(roots: list[Path]) -> str:
     """Explain a missing bundle with the reason its record job reported, if any."""
-    outcome = read_json(artifact / "outcome.json")
-    if isinstance(outcome, dict) and outcome.get("reason"):
-        return f"no bundle was recorded ({outcome['reason']})"
+    for root in roots:
+        outcome = read_json(root / "outcome.json")
+        if isinstance(outcome, dict) and outcome.get("reason"):
+            return f"no bundle was recorded ({outcome['reason']})"
     return "no bundle was recorded"
 
 
@@ -46,11 +56,12 @@ def resolve(
     problems = []
     for target in targets:
         volume, version = target["volume"], target["version"]
-        artifact = artifacts / f"bookshelf-bundle-{volume}-{version}"
-        if (artifact / version).is_dir():
-            bundles.append(artifact / version)
+        roots = artifact_roots(artifacts, volume, version)
+        found = [root / version for root in roots if (root / version).is_dir()]
+        if found:
+            bundles.append(found[0])
         else:
-            problems.append(f"{volume} {version}: {no_bundle_reason(artifact)}")
+            problems.append(f"{volume} {version}: {no_bundle_reason(roots)}")
     return bundles, problems
 
 
