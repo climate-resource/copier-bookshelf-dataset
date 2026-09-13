@@ -123,7 +123,6 @@ A feedstock repository using PR publication must:
 4. Grant `id-token: write` to the CI workflow, which the generated caller already does.
 
 The up-to-date rule keeps the candidate's `main` commit current when the pull request merges.
-Follow the [PR publication pilot](docs/runbooks/pr-publication-pilot.md) to verify the rules and flow.
 
 ## Releasing
 
@@ -153,7 +152,6 @@ It drives a tagged release through the `bookshelf-test` feedstock and asks the A
 bash scripts/release-pilot.sh --template-ref v1.2.3
 ```
 
-Use the PR publication pilot above for repositories that publish on merge.
 
 ## Updating repositories
 
