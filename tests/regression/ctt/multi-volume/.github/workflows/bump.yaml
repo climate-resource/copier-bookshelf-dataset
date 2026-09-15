@@ -1,14 +1,12 @@
 name: Bump version
 
 # Manually bump the version, build the CHANGELOG from the changelog/ fragments,
-# tag, and draft the GitHub release.
+# tag, and publish the GitHub release.
 #
 # The work lives in the shared climate-resource/github-actions workflow.
 #
-# The release is drafted rather than published.
-# Publishing that draft by hand is what triggers the feedstock publish workflow.
-# A release published by CI would not fire it,
-# because releases created with GITHUB_TOKEN do not trigger other workflows.
+# The release records the changelog and publishes no data.
+# The platform publishes a merged pull request from the preview that passed its check.
 
 on:
   workflow_dispatch:
@@ -38,4 +36,4 @@ jobs:
       bump-rule: ${{ inputs.bump_rule }}
       python-version: "3.12"
       create-release: true
-      release-draft: true
+      release-draft: false
