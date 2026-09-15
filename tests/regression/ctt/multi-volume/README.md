@@ -37,11 +37,13 @@ The dataset is two files:
   `volume:` names the collection and its search vocabulary,
   `defaults:` holds what every book shares,
   and `books:` lists one entry per upstream version of the dataset.
-- `build.py` holds only the processing.
+  `visibility:` sets the tier of the book and of everything the build records,
+  and `visibility=` on a single `build.book.write(...)` call narrows one resource.
+- `build.py` is a Jupytext percent-format script holding only the processing.
   It calls `bookshelf.setup()` once, reads each declared input through `build.use(...)`,
   and writes its outputs with `build.book.write(..., used=[...])`.
 
 Everything else about this feedstock lives in the README of
 [copier-bookshelf-dataset](https://github.com/climate-resource/copier-bookshelf-dataset):
 setting the repository up, keeping it in step with the template,
-and how a pull request is previewed and published.
+and previewing and publishing a pull request.
