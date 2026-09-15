@@ -104,7 +104,6 @@ def test_generated_feedstock_calls_reusable_workflows(feedstock: Feedstock) -> N
         "climate-resource/copier-bookshelf-dataset/.github/workflows/"
         "feedstock-ci.yaml@HEAD" in ci
     )
-    # The platform publishes a merged pull request, so a feedstock has no publish path.
     assert not (feedstock.path / ".github/workflows/feedstock-publish.yaml").exists()
 
     workflow = yaml.safe_load(ci)

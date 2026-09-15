@@ -25,7 +25,6 @@ RECORDS_THE_SOURCE = frozenset(
     {
         ".copier-answers.yml",
         ".github/workflows/feedstock-ci.yaml",
-        ".github/workflows/feedstock-publish.yaml",
     }
 )
 
