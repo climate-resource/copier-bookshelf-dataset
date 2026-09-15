@@ -3,7 +3,6 @@ _commit: HEAD
 _src_path: ../../../../copier-bookshelf-dataset
 author: Ada Lovelace
 author_email: ada.lovelace@climate-resource.com
-bookshelf_sdk_version: 1.0.0b8
 dataset_description: Historical national emissions, hyphenated and numbered.
 dataset_name: primap-hist-2024
 dataset_name_human: PRIMAP-hist 2024

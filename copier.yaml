@@ -24,7 +24,7 @@ dataset_name_human:
     help: >-
         What is the human-readable name of your project? This will become the
         header of your README so can include spaces, capital letters etc.
-    placeholder: "Example Dataset"
+    default: "{{ dataset_name | replace('-', ' ') | title }}"
 
 dataset_description:
     type: str
@@ -34,6 +34,7 @@ dataset_description:
 
 project_url:
     type: str
+    when: false
     help: What is the URL for your project?
     default: |-
         https://github.com/climate-resource/bookshelf-{{ dataset_name }}
@@ -44,11 +45,13 @@ project_url:
 
 bookshelf_sdk_version:
     type: str
+    when: false
     help: Which exact Bookshelf SDK version should the feedstock and preview job use?
     default: "1.0.0b8"
 
 extra_recipes:
     type: yaml
+    when: false
     help: >-
         Which extra volume names should get a bookshelf-<name>.yaml recipe?
         Enter a YAML list.

@@ -6,12 +6,23 @@ Copier does, so a loosened pattern shows up here rather than in a generated feed
 """
 
 import re
+import shutil
+import subprocess
 import warnings
+from pathlib import Path
 
 import jinja2
 import pytest
-from conftest import CASES, COPIER, QUESTIONS, ROOT
+from conftest import CASES, COPIER, ENV, FEEDSTOCKS, QUESTIONS, ROOT
 from jinja2_ansible_filters import AnsibleCoreFiltersExtension
+
+# The four questions a user has to think about, in the order Copier asks them.
+PROMPTED_WITHOUT_A_DEFAULT = (
+    "author",
+    "author_email",
+    "dataset_name",
+    "dataset_description",
+)
 
 
 def validator_environment() -> jinja2.Environment:
@@ -59,6 +70,113 @@ def test_every_question_has_a_type_and_help() -> None:
         assert question["type"] == ("yaml" if name == "extra_recipes" else "str"), name
         assert question["help"].strip(), name
         assert "placeholder" in question or "default" in question, name
+
+
+def test_only_the_questions_worth_asking_are_prompted() -> None:
+    """The advanced questions carry a default, so they cost a prompt for nothing."""
+    prompted = {
+        name
+        for name, question in QUESTIONS.items()
+        if question.get("when", True) is not False
+    }
+
+    assert prompted == {*PROMPTED_WITHOUT_A_DEFAULT, "dataset_name_human"}
+    assert {name for name in prompted if "default" not in QUESTIONS[name]} == set(
+        PROMPTED_WITHOUT_A_DEFAULT
+    )
+
+
+@pytest.mark.parametrize(
+    ("dataset_name", "title"),
+    [
+        ("example", "Example"),
+        ("primap-hist-2024", "Primap Hist 2024"),
+        ("ngfs-scenarios", "Ngfs Scenarios"),
+    ],
+)
+def test_dataset_name_human_defaults_to_a_title_derived_from_the_short_name(
+    dataset_name: str, title: str
+) -> None:
+    """Enter is the right answer, and the prompt is still there to correct casing."""
+    template = validator_environment().from_string(
+        COPIER["dataset_name_human"]["default"]
+    )
+
+    assert template.render(dataset_name=dataset_name) == title
+
+
+@pytest.mark.slow
+def test_a_question_that_is_never_asked_still_takes_a_data_override(
+    tmp_path: Path,
+) -> None:
+    """Hiding a prompt has to leave the value settable, because pinning is the point."""
+    source = tmp_path / "src"
+    source.mkdir()
+    shutil.copy(ROOT / "copier.yaml", source / "copier.yaml")
+    shutil.copytree(ROOT / "template", source / "template")
+
+    for command in (
+        ("git", "init", "-q", "-b", "main"),
+        ("git", "add", "."),
+        (
+            "git",
+            "-c",
+            "user.name=ctt",
+            "-c",
+            "user.email=ctt@invalid",
+            "commit",
+            "-qm",
+            "t",
+        ),
+    ):
+        subprocess.run(command, cwd=source, env=ENV, check=True)
+
+    destination = tmp_path / "rendered"
+    result = subprocess.run(
+        (
+            "uv",
+            "run",
+            "copier",
+            "copy",
+            "--defaults",
+            "--data",
+            "author=Ada Lovelace",
+            "--data",
+            "author_email=ada.lovelace@climate-resource.com",
+            "--data",
+            "dataset_name=example",
+            "--data",
+            "dataset_description=An override has to reach the render.",
+            "--data",
+            "bookshelf_sdk_version=9.9.9",
+            str(source),
+            str(destination),
+        ),
+        cwd=ROOT,
+        env=ENV,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, f"{result.stdout}\n{result.stderr}"
+    assert "==9.9.9" in (destination / "pyproject.toml").read_text()
+
+
+def test_a_recorded_answer_survives_for_the_questions_that_choose_files() -> None:
+    """`extra_recipes` decides which recipes exist, so an update cannot re-derive it."""
+    multi_volume = next(
+        generated for generated in FEEDSTOCKS if generated.name == "multi-volume"
+    )
+
+    assert multi_volume.answers["extra_recipes"] == ["second-volume"]
+    assert multi_volume.answers["project_url"].startswith("https://github.com/")
+
+
+def test_no_feedstock_records_the_sdk_pin() -> None:
+    """The template moves the pin, so a recorded answer would freeze a feedstock."""
+    for generated in FEEDSTOCKS:
+        assert "bookshelf_sdk_version" not in generated.answers, generated.name
 
 
 @pytest.mark.parametrize(
