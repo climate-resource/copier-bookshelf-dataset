@@ -160,6 +160,8 @@ def test_generated_feedstock_guards_against_committing_data_and_secrets(
 
     assert {"check-added-large-files", "detect-private-key", "forbidden-files"} <= ids
     assert {"ruff-check", "ruff-format", "uv-lock"} <= ids
+    # Ruff parses neither, so the recipe and the Renovate config need their own hooks.
+    assert {"check-yaml", "check-json"} <= ids
 
 
 def test_caller_templates_derive_the_reusable_workflow_ref() -> None:

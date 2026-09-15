@@ -9,7 +9,9 @@ repos:
       - id: check-added-large-files
       - id: detect-private-key
       - id: check-merge-conflict
+      # Ruff reads neither, and a malformed recipe or Renovate config fails silently.
       - id: check-yaml
+      - id: check-json
       - id: end-of-file-fixer
       - id: trailing-whitespace
   - repo: local
