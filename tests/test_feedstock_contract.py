@@ -41,8 +41,8 @@ def test_generated_feedstock_uses_record_and_replay_shape(feedstock: Feedstock) 
         in makefile
     )
     assert "uv run bookshelf validate $(BUNDLE)" in makefile
-    assert "uv run bookshelf publish $(BUNDLE)" in makefile
-    assert "uv run bookshelf publish $(BUNDLE) --dry-run" in makefile
+    # Publication is the platform's, so a feedstock carries no publish target.
+    assert "bookshelf publish" not in makefile
 
 
 def test_generated_recipe_declares_one_book_reading_the_checked_in_input(

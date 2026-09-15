@@ -123,11 +123,11 @@ Dispatch the "Bump version" workflow and pick a bump rule.
 The workflow bumps the version with `uv version`, builds the CHANGELOG with towncrier,
 tags, and drafts the GitHub release in a single run.
 
-The work is delegated to the shared `climate-resource/github-actions` bump workflow,
-so both this repository and every generated feedstock call the same thing.
+The work is delegated to the shared `climate-resource/github-actions` bump workflow.
 
-A generated feedstock publishes its release rather than drafting it,
-because the release records the changelog and publishes no data.
+A generated feedstock cuts no releases and keeps no changelog.
+The platform publishes its books when a pull request merges,
+so the pull request and the published edition are its record.
 
 The bump workflow needs no `PERSONAL_ACCESS_TOKEN`, because it runs on the built-in `GITHUB_TOKEN`.
 

@@ -40,10 +40,6 @@ ruff-fixes:  ## fix the code using ruff
 #test:  ## run the tests
 #	uv run pytest src tests -r a -v --doctest-modules --cov=src
 
-.PHONY: changelog-draft
-changelog-draft:  ## compile a draft of the next changelog
-	uv run towncrier build --draft --version $(shell uv version --short)
-
 .PHONY: virtual-environment
 virtual-environment:  ## update virtual environment, create a new one if it doesn't already exist
 	uv sync
@@ -66,11 +62,3 @@ run:  ## Record and validate one book, selected with VERSION=vX.Y.Z
     # A bare `bookshelf record` refuses to replace a bundle that is under review.
 	uv run bookshelf record --force --version $(VERSION) --bundle $(BUNDLE)
 	uv run bookshelf validate $(BUNDLE)
-
-
-publish:  ## replay the recorded bundle to the Bookshelf API
-	uv run bookshelf publish $(BUNDLE)
-
-
-publish-dry-run:  ## resolve the edition the bundle would publish to, without publishing
-	uv run bookshelf publish $(BUNDLE) --dry-run

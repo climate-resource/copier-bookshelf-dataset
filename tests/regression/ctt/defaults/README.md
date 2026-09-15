@@ -59,17 +59,14 @@ A bundle holds one book, so a version selects both what is recorded and where it
 ```
 
 That records and validates `bundle/v0.1.0` without any API credentials.
-Replay it to the Bookshelf API with `make publish VERSION=v0.1.0`,
-and see which edition it would resolve to first with `make publish-dry-run VERSION=v0.1.0`.
 
-Both targets and the CI workflows call the `bookshelf` CLI directly,
-so this repository carries no publishing scripts of its own.
+The target and the CI workflow call the `bookshelf` CLI directly,
+so this repository carries no scripts of its own.
 The same commands are available by hand:
 
 ```bash
    uv run bookshelf record --force --version v0.1.0 --bundle bundle/v0.1.0
    uv run bookshelf validate bundle/v0.1.0
-   uv run bookshelf publish bundle/v0.1.0 --dry-run
 ```
 
 Each takes `--json` for a machine readable summary, and carries its meaning in the exit code.
@@ -110,11 +107,3 @@ The recorded bundle also carries the executed script and notebook, so its bundle
 Any edit to `build.py`, a comment included, produces a new bundle hash.
 Publishing after a source-only edit therefore creates a new edition whose data is unchanged.
 The underlying resources are deduplicated if they don't change.
-
-## Releasing
-
-Dispatch the "Bump version" workflow and pick a bump rule.
-It bumps the version with `uv version`, builds the CHANGELOG with towncrier, tags,
-and publishes the GitHub release, all in one run.
-
-The release records the changelog and publishes no data.

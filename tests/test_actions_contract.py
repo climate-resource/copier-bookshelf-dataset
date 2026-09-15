@@ -251,24 +251,19 @@ SHARED_BUMP = re.compile(
 
 
 def test_bump_delegates_to_the_shared_actions_repository() -> None:
-    """Both bump workflows call the shared workflow, rather than inlining its steps.
+    """The template bump workflow calls the shared one rather than inlining its steps.
 
     The tag is not spelled out here, because Renovate moves it.
+    A generated feedstock has no bump workflow, because it cuts no releases.
     """
-    callers = (
-        WORKFLOWS / "bump.yaml",
-        ROOT / "template" / ".github" / "workflows" / "bump.yaml",
-    )
+    caller = WORKFLOWS / "bump.yaml"
+    shared = [
+        line for line in uses_lines(caller) if "climate-resource/github-actions" in line
+    ]
 
-    for caller in callers:
-        shared = [
-            line
-            for line in uses_lines(caller)
-            if "climate-resource/github-actions" in line
-        ]
-
-        assert len(shared) == 1, (caller.relative_to(ROOT), shared)
-        assert SHARED_BUMP.fullmatch(shared[0]), (caller.relative_to(ROOT), shared[0])
+    assert len(shared) == 1, shared
+    assert SHARED_BUMP.fullmatch(shared[0]), shared[0]
+    assert not (ROOT / "template" / ".github" / "workflows" / "bump.yaml").exists()
 
 
 def test_this_repository_has_a_renovate_config() -> None:
