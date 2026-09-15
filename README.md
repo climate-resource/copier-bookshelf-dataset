@@ -144,6 +144,37 @@ It drives a pull request through the `bookshelf-test` feedstock and asks the API
 
 ## Updating repositories
 
+### Keeping every feedstock in sync
+
+A feedstock is thin on purpose.
+Its CI is a one-line caller into this repository's reusable workflow,
+so most template changes need no per-repository edit at all.
+Two rules keep that true:
+
+- A reusable workflow's inputs are an interface.
+  Add a new input with a default, so a caller pinned to an older ref keeps working.
+- Generated callers pin the template ref that generated them, never `main`.
+
+The three tools that carry a change to every feedstock:
+
+1. Discovery.
+   Every feedstock carries the `bookshelf-feedstock` topic,
+   so `gh repo list climate-resource --topic bookshelf-feedstock` is the fleet.
+2. Renovate.
+   Each feedstock's `renovate.json` enables the `copier` manager,
+   which opens a `copier update` pull request on that repository when this template tags a release.
+   CI on that pull request records every book, so a template change that breaks a feedstock fails there.
+   Renovate resolves the template through `.copier-answers.yml`,
+   so `_src_path` must be the full Git URL and `_commit` must be a plain tag.
+   A feedstock scaffolded with `--vcs-ref main` records a describe string such as `v0.3.0b1-3-g831d64b`,
+   which Renovate cannot follow, so scaffold from a tagged release.
+3. A fan-out from the workspace.
+   For a change that cannot wait for Renovate,
+   `mani exec --tags bookshelf -- copier update --defaults` runs the update across every checkout,
+   and the branches are pushed by hand.
+
+### Updating one repository
+
 If you need to update your repository,
 simply navigate to your repository and run `copier update`.
 If you don't want to go through all the questions again
