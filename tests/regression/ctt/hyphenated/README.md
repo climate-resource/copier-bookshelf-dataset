@@ -59,22 +59,19 @@ A bundle holds one book, so a version selects both what is recorded and where it
 ```
 
 That records and validates `bundle/v0.1.0` without any API credentials.
-Replay it to the Bookshelf API with `make publish VERSION=v0.1.0`,
-and see which edition it would resolve to first with `make publish-dry-run VERSION=v0.1.0`.
 
-Both targets and the CI workflows call the `bookshelf` CLI directly,
-so this repository carries no publishing scripts of its own.
+The target and the CI workflow call the `bookshelf` CLI directly,
+so this repository carries no scripts of its own.
 The same commands are available by hand:
 
 ```bash
    uv run bookshelf record --force --version v0.1.0 --bundle bundle/v0.1.0
    uv run bookshelf validate bundle/v0.1.0
-   uv run bookshelf publish bundle/v0.1.0 --dry-run
 ```
 
 Each takes `--json` for a machine readable summary, and carries its meaning in the exit code.
 
-CI records every version `books:` declares, and the publish workflow replays every one of them.
+CI records and validates every version `books:` declares, and uploads a preview of each one.
 Publishing an unchanged book is idempotent, so a version that has not moved keeps its edition.
 
 ### Worked examples
@@ -86,11 +83,8 @@ documents every field.
 
 ## Publishing
 
-Publishing uses the repository environment named `deploy`.
-Configure `BOOKSHELF_CLIENT_ID` and `BOOKSHELF_CLIENT_SECRET` as environment secrets on that environment.
-Set the public `BOOKSHELF_TOKEN_URL` repository variable to the WorkOS AuthKit token endpoint.
-The generated publish caller uses `secrets: inherit`.
-The reusable publish job carries `environment: deploy`, so those environment secrets are resolved when that job starts.
+The platform publishes a merged pull request from the sealed preview that passed its check.
+This repository holds no publish credential, because CI never publishes.
 
 A first publish into a new volume needs that volume to exist.
 `bookshelf publish` will not create one, so it fails with `Series 'primap-hist-2024' not found`.
@@ -113,13 +107,3 @@ The recorded bundle also carries the executed script and notebook, so its bundle
 Any edit to `build.py`, a comment included, produces a new bundle hash.
 Publishing after a source-only edit therefore creates a new edition whose data is unchanged.
 The underlying resources are deduplicated if they don't change.
-
-## Releasing
-
-Dispatch the "Bump version" workflow and pick a bump rule.
-It bumps the version with `uv version`, builds the CHANGELOG with towncrier, tags,
-and drafts the GitHub release, all in one run.
-
-Publishing that draft release by hand is what triggers the publish workflow.
-A release published by CI would not fire it,
-because releases created with `GITHUB_TOKEN` do not trigger other workflows.

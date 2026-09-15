@@ -107,26 +107,6 @@ def registered(manifest: dict[str, Any]) -> dict[str, dict[str, Any]]:
     }
 
 
-def test_towncrier_draft(feedstock: Feedstock, workspace: Path):
-    res = subprocess.run(
-        (
-            "uvx",
-            "towncrier",
-            "build",
-            "--draft",
-            "--version",
-            "0.2.0",
-        ),
-        cwd=workspace,
-        env=ENV,
-        stdout=subprocess.PIPE,
-        check=True,
-    )
-
-    expected = f"{feedstock.answers['dataset_name_human']} 0.2.0"
-    assert expected in res.stdout.decode()
-
-
 def test_run(
     feedstock: Feedstock,
     recorded: dict[str, dict[str, Any]],

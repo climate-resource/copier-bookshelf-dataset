@@ -102,16 +102,8 @@ The reusable workflow checks out its helpers from its own commit.
 A feedstock's first publish needs each volume created once with `bookshelf volume create`.
 `bookshelf publish` will not create one, so a missing volume fails with `Series 'NAME' not found`.
 
-The release trigger is still active until #31 removes it.
-The PR publication and release publication paths must not both be enabled on the same repository.
-Before enabling PR publication, disable the legacy `Feedstock publish` workflow in that repository.
-The legacy path uses `deploy` with `BOOKSHELF_CLIENT_ID` and `BOOKSHELF_CLIENT_SECRET` environment secrets,
-and the `BOOKSHELF_TOKEN_URL` repository variable.
-The legacy publish caller uses `secrets: inherit`.
-Its reusable publish job carries `environment: deploy`, which resolves those environment secrets at job start.
-These credentials belong only to the legacy release path.
-The legacy path publishes `bookshelf.yaml` alone,
-so a feedstock with `extra_recipes` needs PR publication to publish its other volumes.
+The platform publishes a merged pull request from the sealed preview that passed its check.
+There is no CI publish path, so a feedstock needs no publish credential and no deployment environment.
 
 ## Repository rules
 
@@ -131,12 +123,11 @@ Dispatch the "Bump version" workflow and pick a bump rule.
 The workflow bumps the version with `uv version`, builds the CHANGELOG with towncrier,
 tags, and drafts the GitHub release in a single run.
 
-The work is delegated to the shared `climate-resource/github-actions` bump workflow,
-so both this repository and every generated feedstock call the same thing.
+The work is delegated to the shared `climate-resource/github-actions` bump workflow.
 
-For a feedstock still using the legacy release path, publishing the draft by hand triggers publication.
-A release published by CI would not fire it,
-because releases created with `GITHUB_TOKEN` do not trigger other workflows.
+A generated feedstock cuts no releases and keeps no changelog.
+The platform publishes its books when a pull request merges,
+so the pull request and the published edition are its record.
 
 The bump workflow needs no `PERSONAL_ACCESS_TOKEN`, because it runs on the built-in `GITHUB_TOKEN`.
 
@@ -145,15 +136,44 @@ or let Renovate open the pull request for them.
 
 A green test suite proves the render is valid, not that the rendered feedstock still works
 against a live Bookshelf.
-The [release pilot](docs/runbooks/release-pilot.md) checks the legacy release path.
-It drives a tagged release through the `bookshelf-test` feedstock and asks the API what landed:
-
-```bash
-bash scripts/release-pilot.sh --template-ref v1.2.3
-```
+The regression check for a template release is the pull request publication pilot,
+whose steps are written up in
+[#30](https://github.com/climate-resource/copier-bookshelf-dataset/issues/30).
+It drives a pull request through the `bookshelf-test` feedstock and asks the API what landed.
 
 
 ## Updating repositories
+
+### Keeping every feedstock in sync
+
+A feedstock is thin on purpose.
+Its CI is a one-line caller into this repository's reusable workflow,
+so most template changes need no per-repository edit at all.
+Two rules keep that true:
+
+- A reusable workflow's inputs are an interface.
+  Add a new input with a default, so a caller pinned to an older ref keeps working.
+- Generated callers pin the template ref that generated them, never `main`.
+
+The three tools that carry a change to every feedstock:
+
+1. Discovery.
+   Every feedstock carries the `bookshelf-feedstock` topic,
+   so `gh repo list climate-resource --topic bookshelf-feedstock` is the fleet.
+2. Renovate.
+   Each feedstock's `renovate.json` enables the `copier` manager,
+   which opens a `copier update` pull request on that repository when this template tags a release.
+   CI on that pull request records every book, so a template change that breaks a feedstock fails there.
+   Renovate resolves the template through `.copier-answers.yml`,
+   so `_src_path` must be the full Git URL and `_commit` must be a plain tag.
+   A feedstock scaffolded with `--vcs-ref main` records a describe string such as `v0.3.0b1-3-g831d64b`,
+   which Renovate cannot follow, so scaffold from a tagged release.
+3. A fan-out from the workspace.
+   For a change that cannot wait for Renovate,
+   `mani exec --tags bookshelf -- copier update --defaults` runs the update across every checkout,
+   and the branches are pushed by hand.
+
+### Updating one repository
 
 If you need to update your repository,
 simply navigate to your repository and run `copier update`.

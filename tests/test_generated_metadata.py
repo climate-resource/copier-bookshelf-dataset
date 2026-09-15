@@ -12,7 +12,7 @@ import pytest
 import yaml
 from conftest import QUESTIONS, Feedstock
 
-TOML_FILES = ("pyproject.toml", "towncrier.toml", "ruff.toml")
+TOML_FILES = ("pyproject.toml", "ruff.toml")
 
 # A workflow ships GitHub Actions expressions, which share Jinja's delimiters.
 GITHUB_EXPRESSION = re.compile(r"\$\{\{.*?\}\}", re.DOTALL)
@@ -45,9 +45,8 @@ def test_generated_recipe_parses_and_round_trips_the_answers(
 
 def test_generated_workflows_parse(feedstock: Feedstock) -> None:
     """The generated callers are valid YAML with the triggers they claim."""
-    for name in ("feedstock-ci.yaml", "feedstock-publish.yaml", "bump.yaml"):
-        workflow = yaml.safe_load(feedstock.read(f".github/workflows/{name}"))
-        assert workflow["jobs"]
+    workflow = yaml.safe_load(feedstock.read(".github/workflows/feedstock-ci.yaml"))
+    assert workflow["jobs"]
 
 
 def test_generated_pyproject_round_trips_the_name_and_description(
@@ -58,17 +57,6 @@ def test_generated_pyproject_round_trips_the_name_and_description(
 
     assert project["name"] == f"bookshelf-{feedstock.answers['dataset_name']}"
     assert project["description"] == feedstock.answers["dataset_description"]
-
-
-def test_generated_towncrier_round_trips_the_human_name(feedstock: Feedstock) -> None:
-    """Changelog titles carry the human name, which may contain quotes."""
-    towncrier = tomllib.loads(feedstock.read("towncrier.toml"))["tool"]["towncrier"]
-
-    assert towncrier["name"] == f"bookshelf-{feedstock.answers['dataset_name']}"
-    assert towncrier["title_format"] == (
-        f"## {feedstock.answers['dataset_name_human']} {{version}} ({{project_date}})"
-    )
-    assert feedstock.answers["project_url"] in towncrier["issue_format"]
 
 
 def test_generated_readme_leads_with_the_human_name_and_description(
