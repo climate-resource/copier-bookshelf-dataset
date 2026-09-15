@@ -7,50 +7,11 @@ for the [bookshelf](https://github.com/climate-resource/bookshelf).
 
 ## Getting started
 
-Prepare the freshly generated repository:
-
-```bash
-   make initial-setup
-```
-
-That does the `git init`, sets the origin remote, writes `uv.lock` and makes the first commit.
-Recording derives provenance from git, so it needs all three.
-The target is guarded, so re-running it on an existing repository changes nothing.
-
-Once the repository is on GitHub, give it the `bookshelf-feedstock` topic:
-
-```bash
-   gh repo edit --add-topic bookshelf-feedstock
-```
-
-That topic is how every feedstock is found.
-
 Install the local virtual environment:
 
 ```bash
    make virtual-environment
 ```
-
-## Updating from the template
-
-```bash
-   copier update
-```
-
-The template declares no Copier tasks, so this works without `--trust`
-and Renovate can propose template updates on its own.
-
-Each dataset consists of two files:
-
-- `bookshelf.yaml` is the recipe for the metadata about the dataset.
-  `volume:` names the collection and its search vocabulary,
-  `defaults:` holds what every book shares,
-  and `books:` lists one entry per upstream version of the dataset.
-- `build.py` is a standalone Jupytext build file holding only the processing.
-  It calls `bookshelf.setup()` once, reads each declared input through `build.use(...)`,
-  and writes its outputs with `build.book.write(..., used=[...])`.
-
-### Recording a book
 
 A bundle holds one book, so a version selects both what is recorded and where it lands:
 
@@ -60,32 +21,6 @@ A bundle holds one book, so a version selects both what is recorded and where it
 
 That records and validates `bundle/v0.1.0` without any API credentials.
 
-The target and the CI workflow call the `bookshelf` CLI directly,
-so this repository carries no scripts of its own.
-The same commands are available by hand:
-
-```bash
-   uv run bookshelf record --force --version v0.1.0 --bundle bundle/v0.1.0
-   uv run bookshelf validate bundle/v0.1.0
-```
-
-Each takes `--json` for a machine readable summary, and carries its meaning in the exit code.
-
-CI records and validates every version `books:` declares, and uploads a preview of each one.
-Publishing an unchanged book is idempotent, so a version that has not moved keeps its edition.
-
-### Worked examples
-
-The SDK's [examples README](https://github.com/climate-resource/bookshelf/blob/main/examples/README.md)
-lists the example feedstocks and explains how to use them.
-The [recipe format](https://github.com/climate-resource/bookshelf/blob/main/docs/explanation/recipe-format.md)
-documents every field.
-
-## Publishing
-
-The platform publishes a merged pull request from the sealed preview that passed its check.
-This repository holds no publish credential, because CI never publishes.
-
 A first publish into a new volume needs that volume to exist.
 `bookshelf publish` will not create one, so it fails with `Series 'multi-volume' not found`.
 Create it once, from an account with WRITE:
@@ -94,16 +29,19 @@ Create it once, from an account with WRITE:
    uv run bookshelf volume create multi-volume --licence CC-BY-4.0
 ```
 
-`visibility` in `bookshelf.yaml` sets the tier of the book and of everything the build records,
-the `build.ipynb` and `build.html` documents included.
-Pass `visibility=` on a single `build.book.write(...)` call to narrow that one resource,
-so a public book can still hold a member only your organisation may read.
+## Changing the dataset
 
-A `path:` input is catalogued as a pointer at that repository relative path.
-The platform never re-hosts it, so once the real upstream data is in place,
-move the resource to a `uri:` with the `sha256:` the fetch is checked against.
+The dataset is two files:
 
-The recorded bundle also carries the executed script and notebook, so its bundle hash covers the build source.
-Any edit to `build.py`, a comment included, produces a new bundle hash.
-Publishing after a source-only edit therefore creates a new edition whose data is unchanged.
-The underlying resources are deduplicated if they don't change.
+- `bookshelf.yaml` is the recipe for the metadata about the dataset.
+  `volume:` names the collection and its search vocabulary,
+  `defaults:` holds what every book shares,
+  and `books:` lists one entry per upstream version of the dataset.
+- `build.py` holds only the processing.
+  It calls `bookshelf.setup()` once, reads each declared input through `build.use(...)`,
+  and writes its outputs with `build.book.write(..., used=[...])`.
+
+Everything else about this feedstock lives in the README of
+[copier-bookshelf-dataset](https://github.com/climate-resource/copier-bookshelf-dataset):
+setting the repository up, keeping it in step with the template,
+and how a pull request is previewed and published.
