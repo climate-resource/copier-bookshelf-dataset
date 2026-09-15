@@ -191,9 +191,8 @@ def test_the_rendered_renovate_config_parses(rendered: Rendered) -> None:
 
 def test_the_rendered_callers_resolve_a_ref(rendered: Rendered) -> None:
     """An unresolved ref renders as a bare `@`, which a workflow call cannot use."""
-    for name in ("feedstock-ci.yaml", "feedstock-publish.yaml"):
-        calls = uses_lines(rendered.path / ".github" / "workflows" / name)
+    calls = uses_lines(rendered.path / ".github" / "workflows" / "feedstock-ci.yaml")
 
-        assert calls, f"{name} calls nothing"
-        for call in calls:
-            assert call.rsplit("@", 1)[-1].strip(), f"{name} pinned nothing: {call}"
+    assert calls, "feedstock-ci.yaml calls nothing"
+    for call in calls:
+        assert call.rsplit("@", 1)[-1].strip(), f"pinned nothing: {call}"

@@ -183,39 +183,26 @@ def test_ci_uploads_the_preview_from_a_trusted_job() -> None:
     assert "name: bookshelf-preview" in workflow
 
 
-def test_publish_reusable_workflow_uses_deploy_environment_secrets() -> None:
-    """Publish exchanges deploy environment M2M credentials and replays."""
-    workflow = (WORKFLOWS / "feedstock-publish.yaml").read_text()
+def test_no_reusable_workflow_publishes_from_ci() -> None:
+    """The platform publishes a merged pull request, so CI carries no publish path."""
+    assert not (WORKFLOWS / "feedstock-publish.yaml").exists()
 
-    assert "workflow_call:" in workflow
-    assert "pull_request:" not in workflow
-    assert "push:" not in workflow
-    assert "workflow_dispatch:" not in workflow
-    assert "api-base-url:" in workflow
-    assert "https://api.climateresource.com.au/bookshelf" in workflow
-    assert "BOOKSHELF_CLIENT_ID:" in workflow
-    assert "BOOKSHELF_CLIENT_SECRET:" in workflow
-    assert "environment: deploy" in workflow
-    assert "grant_type=client_credentials" in workflow
-    assert "./.copier-bookshelf-dataset/actions/record-bundle" in workflow
-    assert 'uv run bookshelf publish "${bundle}"' in workflow
-    assert "for bundle in ${BUNDLES}; do" in workflow
-    assert "Publish outcome" in workflow
+    for workflow in WORKFLOWS.glob("*.yaml"):
+        definition = workflow.read_text()
 
-    # The credential reaches the CLI through the environment.
-    # A token on argv is visible in the process list and in the job log.
-    assert "--token" not in workflow
-    assert "BOOKSHELF_TOKEN: ${{ steps.token.outputs.token }}" in workflow
+        assert "BOOKSHELF_CLIENT_ID" not in definition
+        assert "BOOKSHELF_CLIENT_SECRET" not in definition
+        assert "environment: deploy" not in definition
+        assert "grant_type=client_credentials" not in definition
 
 
 def test_reusable_workflows_checkout_their_own_matching_revision() -> None:
     """A called workflow loads the composite action from the same pinned ref."""
-    for name in ("feedstock-ci.yaml", "feedstock-publish.yaml"):
-        workflow = (WORKFLOWS / name).read_text()
+    workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
 
-        assert "repository: ${{ job.workflow_repository }}" in workflow
-        assert "ref: ${{ job.workflow_sha }}" in workflow
-        assert "path: .copier-bookshelf-dataset" in workflow
+    assert "repository: ${{ job.workflow_repository }}" in workflow
+    assert "ref: ${{ job.workflow_sha }}" in workflow
+    assert "path: .copier-bookshelf-dataset" in workflow
 
 
 def test_actionlint_is_part_of_the_existing_ci_and_immutably_pinned() -> None:
@@ -232,7 +219,6 @@ def test_feedstock_automation_defaults_to_python_312() -> None:
     """Every entry point selects Python 3.12 when callers do not override it."""
     entry_points = (
         WORKFLOWS / "feedstock-ci.yaml",
-        WORKFLOWS / "feedstock-publish.yaml",
         ACTION / "action.yml",
     )
 
@@ -242,13 +228,13 @@ def test_feedstock_automation_defaults_to_python_312() -> None:
         assert 'default: "3.11"' not in definition
 
 
-def test_environment_secret_model_is_documented_without_a_handoff_file() -> None:
-    """The README owns deploy environment guidance without a handoff document."""
+def test_the_credential_model_is_documented_without_a_handoff_file() -> None:
+    """The README owns the credential guidance without a handoff document."""
     readme = (ROOT / "README.md").read_text()
 
-    assert "secrets: inherit" in readme
-    assert "deploy" in readme
-    assert "environment secrets" in readme
+    assert "no publish credential" in readme
+    assert "secrets: inherit" not in readme
+    assert "environment secrets" not in readme
     assert not (ROOT / "HANDOFF.md").exists()
 
 

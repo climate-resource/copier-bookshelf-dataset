@@ -96,7 +96,6 @@ def test_example_inputs_never_collide_between_feedstocks(
 def test_generated_feedstock_calls_reusable_workflows(feedstock: Feedstock) -> None:
     """The generated project owns triggers and delegates workflow implementation."""
     ci = feedstock.read(".github/workflows/feedstock-ci.yaml")
-    publish = feedstock.read(".github/workflows/feedstock-publish.yaml")
 
     assert "pull_request:" in ci
     assert "push:" in ci
@@ -105,15 +104,8 @@ def test_generated_feedstock_calls_reusable_workflows(feedstock: Feedstock) -> N
         "climate-resource/copier-bookshelf-dataset/.github/workflows/"
         "feedstock-ci.yaml@HEAD" in ci
     )
-    assert "release:" in publish
-    assert "workflow_dispatch:" in publish
-    assert (
-        "climate-resource/copier-bookshelf-dataset/.github/workflows/"
-        "feedstock-publish.yaml@HEAD" in publish
-    )
-    assert "secrets: inherit" in publish
-    assert "BOOKSHELF_CLIENT_ID:" not in publish
-    assert "BOOKSHELF_CLIENT_SECRET:" not in publish
+    # The platform publishes a merged pull request, so a feedstock has no publish path.
+    assert not (feedstock.path / ".github/workflows/feedstock-publish.yaml").exists()
 
     workflow = yaml.safe_load(ci)
     assert workflow["permissions"] == {"contents": "read", "id-token": "write"}
@@ -151,9 +143,9 @@ def test_caller_templates_derive_the_reusable_workflow_ref() -> None:
     """A caller uses Copier's selected ref, with its resolved commit as fallback."""
     template_workflows = ROOT / "template" / ".github" / "workflows"
 
-    for name in ("feedstock-ci.yaml.jinja", "feedstock-publish.yaml.jinja"):
-        caller = (template_workflows / name).read_text()
-        assert "_copier_conf.vcs_ref or _copier_answers._commit" in caller
+    caller = (template_workflows / "feedstock-ci.yaml.jinja").read_text()
+
+    assert "_copier_conf.vcs_ref or _copier_answers._commit" in caller
 
 
 def test_template_keeps_the_generated_lock_file_under_version_control() -> None:

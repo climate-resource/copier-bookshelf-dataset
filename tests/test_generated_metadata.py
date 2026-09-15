@@ -45,7 +45,7 @@ def test_generated_recipe_parses_and_round_trips_the_answers(
 
 def test_generated_workflows_parse(feedstock: Feedstock) -> None:
     """The generated callers are valid YAML with the triggers they claim."""
-    for name in ("feedstock-ci.yaml", "feedstock-publish.yaml", "bump.yaml"):
+    for name in ("feedstock-ci.yaml", "bump.yaml"):
         workflow = yaml.safe_load(feedstock.read(f".github/workflows/{name}"))
         assert workflow["jobs"]
 
