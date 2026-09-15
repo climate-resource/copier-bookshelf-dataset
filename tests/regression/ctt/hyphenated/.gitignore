@@ -1,6 +1,5 @@
 # Build products
 bundle/
-dist/
 
 # Python
 .venv/
@@ -10,9 +9,6 @@ __pycache__/
 # Tool caches
 .pytest_cache/
 .ruff_cache/
-
-# Rejections left by a `copier update`, which the pre-commit hooks refuse to commit
-*.rej
 
 # macOS
 .DS_Store
