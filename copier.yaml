@@ -34,7 +34,6 @@ dataset_description:
 
 project_url:
     type: str
-    when: false
     help: What is the URL for your project?
     default: |-
         https://github.com/climate-resource/bookshelf-{{ dataset_name }}
@@ -51,7 +50,6 @@ bookshelf_sdk_version:
 
 extra_recipes:
     type: yaml
-    when: false
     help: >-
         Which extra volume names should get a bookshelf-<name>.yaml recipe?
         Enter a YAML list.
