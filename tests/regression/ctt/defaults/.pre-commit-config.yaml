@@ -1,27 +1,16 @@
-# See https://pre-commit.com for more information
-# See https://pre-commit.com/hooks.html for more hooks
-
-ci:
-  autofix_prs: false
-  autoupdate_schedule: quarterly
-  autoupdate_branch: pre-commit-autoupdate
+# See https://pre-commit.com/hooks.html for more hooks.
+# Renovate moves these revs, so there is no pre-commit.ci autoupdate block.
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: 'v6.0.0'
     hooks:
+      # A feedstock handles data and credentials, so these two are the ones that matter.
       - id: check-added-large-files
-      - id: check-ast
-      - id: check-case-conflict
-      - id: check-json
-      - id: check-merge-conflict
-      - id: check-symlinks
-      - id: check-yaml
-      - id: debug-statements
       - id: detect-private-key
+      - id: check-merge-conflict
+      - id: check-yaml
       - id: end-of-file-fixer
-      - id: fix-byte-order-marker
-      - id: mixed-line-ending
       - id: trailing-whitespace
   - repo: local
     hooks:
