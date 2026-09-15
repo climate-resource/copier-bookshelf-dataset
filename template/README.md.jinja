@@ -74,7 +74,7 @@ The same commands are available by hand:
 
 Each takes `--json` for a machine readable summary, and carries its meaning in the exit code.
 
-CI records every version `books:` declares, and the publish workflow replays every one of them.
+CI records and validates every version `books:` declares, and uploads a preview of each one.
 Publishing an unchanged book is idempotent, so a version that has not moved keeps its edition.
 
 ### Worked examples
@@ -86,11 +86,8 @@ documents every field.
 
 ## Publishing
 
-Publishing uses the repository environment named `deploy`.
-Configure `BOOKSHELF_CLIENT_ID` and `BOOKSHELF_CLIENT_SECRET` as environment secrets on that environment.
-Set the public `BOOKSHELF_TOKEN_URL` repository variable to the WorkOS AuthKit token endpoint.
-The generated publish caller uses `secrets: inherit`.
-The reusable publish job carries `environment: deploy`, so those environment secrets are resolved when that job starts.
+The platform publishes a merged pull request from the sealed preview that passed its check.
+This repository holds no publish credential, because CI never publishes.
 
 A first publish into a new volume needs that volume to exist.
 `bookshelf publish` will not create one, so it fails with `Series '{{ dataset_name }}' not found`.
@@ -118,8 +115,6 @@ The underlying resources are deduplicated if they don't change.
 
 Dispatch the "Bump version" workflow and pick a bump rule.
 It bumps the version with `uv version`, builds the CHANGELOG with towncrier, tags,
-and drafts the GitHub release, all in one run.
+and publishes the GitHub release, all in one run.
 
-Publishing that draft release by hand is what triggers the publish workflow.
-A release published by CI would not fire it,
-because releases created with `GITHUB_TOKEN` do not trigger other workflows.
+The release records the changelog and publishes no data.

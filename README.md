@@ -102,16 +102,8 @@ The reusable workflow checks out its helpers from its own commit.
 A feedstock's first publish needs each volume created once with `bookshelf volume create`.
 `bookshelf publish` will not create one, so a missing volume fails with `Series 'NAME' not found`.
 
-The release trigger is still active until #31 removes it.
-The PR publication and release publication paths must not both be enabled on the same repository.
-Before enabling PR publication, disable the legacy `Feedstock publish` workflow in that repository.
-The legacy path uses `deploy` with `BOOKSHELF_CLIENT_ID` and `BOOKSHELF_CLIENT_SECRET` environment secrets,
-and the `BOOKSHELF_TOKEN_URL` repository variable.
-The legacy publish caller uses `secrets: inherit`.
-Its reusable publish job carries `environment: deploy`, which resolves those environment secrets at job start.
-These credentials belong only to the legacy release path.
-The legacy path publishes `bookshelf.yaml` alone,
-so a feedstock with `extra_recipes` needs PR publication to publish its other volumes.
+The platform publishes a merged pull request from the sealed preview that passed its check.
+There is no CI publish path, so a feedstock needs no publish credential and no deployment environment.
 
 ## Repository rules
 
@@ -134,9 +126,8 @@ tags, and drafts the GitHub release in a single run.
 The work is delegated to the shared `climate-resource/github-actions` bump workflow,
 so both this repository and every generated feedstock call the same thing.
 
-For a feedstock still using the legacy release path, publishing the draft by hand triggers publication.
-A release published by CI would not fire it,
-because releases created with `GITHUB_TOKEN` do not trigger other workflows.
+A generated feedstock publishes its release rather than drafting it,
+because the release records the changelog and publishes no data.
 
 The bump workflow needs no `PERSONAL_ACCESS_TOKEN`, because it runs on the built-in `GITHUB_TOKEN`.
 
@@ -145,12 +136,10 @@ or let Renovate open the pull request for them.
 
 A green test suite proves the render is valid, not that the rendered feedstock still works
 against a live Bookshelf.
-The [release pilot](docs/runbooks/release-pilot.md) checks the legacy release path.
-It drives a tagged release through the `bookshelf-test` feedstock and asks the API what landed:
-
-```bash
-bash scripts/release-pilot.sh --template-ref v1.2.3
-```
+The regression check for a template release is the pull request publication pilot,
+whose steps are written up in
+[#30](https://github.com/climate-resource/copier-bookshelf-dataset/issues/30).
+It drives a pull request through the `bookshelf-test` feedstock and asks the API what landed.
 
 
 ## Updating repositories
