@@ -23,5 +23,5 @@ jobs:
         bookshelf.yaml
         bookshelf-second-volume.yaml
       main-ref: main
-      api-base-url: ${{ vars.BOOKSHELF_API_BASE_URL || 'https://bookshelf.climateresource.com.au' }}
+      api-base-url: ${{ vars.BOOKSHELF_API_URL || 'https://bookshelf.climateresource.com.au' }}
       sdk-version: "1.0.0b8"

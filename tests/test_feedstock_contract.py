@@ -120,7 +120,7 @@ def test_generated_feedstock_calls_reusable_workflows(feedstock: Feedstock) -> N
             + [f"bookshelf-{name}.yaml" for name in feedstock.answers["extra_recipes"]]
         ),
         "main-ref": "main",
-        "api-base-url": "${{ vars.BOOKSHELF_API_BASE_URL"
+        "api-base-url": "${{ vars.BOOKSHELF_API_URL"
         " || 'https://bookshelf.climateresource.com.au' }}",
         "sdk-version": SDK_VERSION,
     }

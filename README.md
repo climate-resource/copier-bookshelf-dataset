@@ -67,7 +67,7 @@ Pushes to `main`, the weekly schedule and manual dispatch build and validate wit
 The Bookshelf GitHub App holds the publishing credentials,
 so a feedstock needs no publish credential of its own.
 Fork pull requests skip preview uploads, because they cannot mint a token for the upstream repository.
-CI reads the API URL from the `BOOKSHELF_API_BASE_URL` repository variable and falls back to production.
+CI reads the API URL from the `BOOKSHELF_API_URL` repository variable and falls back to production.
 
 ### How the build is locked down
 
