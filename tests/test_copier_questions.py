@@ -6,12 +6,58 @@ Copier does, so a loosened pattern shows up here rather than in a generated feed
 """
 
 import re
+import shutil
+import subprocess
 import warnings
+from pathlib import Path
 
 import jinja2
 import pytest
-from conftest import CASES, COPIER, QUESTIONS, ROOT
+import yaml
+from conftest import CASES, COPIER, ENV, FEEDSTOCKS, QUESTIONS, ROOT
 from jinja2_ansible_filters import AnsibleCoreFiltersExtension
+
+# The four questions a user has to think about, in the order Copier asks them.
+PROMPTED_WITHOUT_A_DEFAULT = (
+    "author",
+    "author_email",
+    "dataset_name",
+    "dataset_description",
+)
+
+
+def git(command: tuple[str, ...], cwd: Path) -> None:
+    """Run one git command, with an identity a temporary repository does not have."""
+    subprocess.run(
+        ("git", "-c", "user.name=ctt", "-c", "user.email=ctt@invalid", *command),
+        cwd=cwd,
+        env=ENV,
+        check=True,
+        capture_output=True,
+    )
+
+
+def committed_template(destination: Path) -> Path:
+    """Copy the working tree template into a git repository Copier can render."""
+    destination.mkdir(parents=True)
+    shutil.copy(ROOT / "copier.yaml", destination / "copier.yaml")
+    shutil.copytree(ROOT / "template", destination / "template")
+    git(("init", "-q", "-b", "main"), destination)
+    git(("add", "."), destination)
+    git(("commit", "-qm", "template"), destination)
+    return destination
+
+
+def copier(*arguments: str) -> subprocess.CompletedProcess[str]:
+    """Run one Copier command against this repository's environment."""
+    return subprocess.run(
+        ("uv", "run", "copier", *arguments),
+        cwd=ROOT,
+        env=ENV,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
 
 
 def validator_environment() -> jinja2.Environment:
@@ -59,6 +105,141 @@ def test_every_question_has_a_type_and_help() -> None:
         assert question["type"] == ("yaml" if name == "extra_recipes" else "str"), name
         assert question["help"].strip(), name
         assert "placeholder" in question or "default" in question, name
+
+
+def test_the_sdk_pin_is_the_only_question_never_prompted() -> None:
+    """The rest stay prompted, because Copier re-derives what it does not record."""
+    prompted = {
+        name
+        for name, question in QUESTIONS.items()
+        if question.get("when", True) is not False
+    }
+
+    assert prompted == set(QUESTIONS) - {"bookshelf_sdk_version"}
+    assert {name for name in prompted if "default" not in QUESTIONS[name]} == set(
+        PROMPTED_WITHOUT_A_DEFAULT
+    )
+
+
+@pytest.mark.parametrize(
+    ("dataset_name", "title"),
+    [
+        ("example", "Example"),
+        ("primap-hist-2024", "Primap Hist 2024"),
+        ("ngfs-scenarios", "Ngfs Scenarios"),
+    ],
+)
+def test_dataset_name_human_defaults_to_a_title_derived_from_the_short_name(
+    dataset_name: str, title: str
+) -> None:
+    """Enter is the right answer, and the prompt is still there to correct casing."""
+    template = validator_environment().from_string(
+        COPIER["dataset_name_human"]["default"]
+    )
+
+    assert template.render(dataset_name=dataset_name) == title
+
+
+@pytest.mark.slow
+def test_a_question_that_is_never_asked_still_takes_a_data_override(
+    tmp_path: Path,
+) -> None:
+    """Hiding a prompt has to leave the value settable, because pinning is the point."""
+    source = committed_template(tmp_path.resolve() / "src")
+    destination = tmp_path.resolve() / "rendered"
+
+    result = copier(
+        "copy",
+        "--defaults",
+        "--data",
+        "author=Ada Lovelace",
+        "--data",
+        "author_email=ada.lovelace@climate-resource.com",
+        "--data",
+        "dataset_name=example",
+        "--data",
+        "dataset_description=An override has to reach the render.",
+        "--data",
+        "bookshelf_sdk_version=9.9.9",
+        str(source),
+        str(destination),
+    )
+
+    assert result.returncode == 0, f"{result.stdout}\n{result.stderr}"
+    assert "==9.9.9" in (destination / "pyproject.toml").read_text()
+
+
+@pytest.mark.slow
+def test_an_update_keeps_the_answers_that_decide_which_files_exist(
+    tmp_path: Path,
+) -> None:
+    """Copier re-derives an answer it never recorded, which would delete a recipe."""
+    source = committed_template(tmp_path.resolve() / "src")
+    git(("tag", "v1.0.0"), source)
+
+    feedstock = tmp_path.resolve() / "feedstock"
+    created = copier(
+        "copy",
+        "--defaults",
+        "--vcs-ref",
+        "v1.0.0",
+        "--data",
+        "author=Grace Hopper",
+        "--data",
+        "author_email=grace.hopper@climate-resource.com",
+        "--data",
+        "dataset_name=example",
+        "--data",
+        "dataset_description=An update must not drop an answer.",
+        "--data",
+        "project_url=https://github.com/climate-resource/renamed-feedstock",
+        "--data",
+        'extra_recipes=["second-volume"]',
+        str(source),
+        str(feedstock),
+    )
+    assert created.returncode == 0, f"{created.stdout}\n{created.stderr}"
+    assert (feedstock / "bookshelf-second-volume.yaml").exists()
+
+    git(("init", "-q", "-b", "main"), feedstock)
+    git(("add", "."), feedstock)
+    git(("commit", "-qm", "scaffold"), feedstock)
+
+    # An update only runs against a newer template version, so the source gains one.
+    (source / "template" / "ruff.toml").write_text(
+        (source / "template" / "ruff.toml").read_text() + "\n"
+    )
+    git(("add", "."), source)
+    git(("commit", "-qm", "second version"), source)
+    git(("tag", "v2.0.0"), source)
+
+    updated = copier("update", "--defaults", str(feedstock))
+    assert updated.returncode == 0, f"{updated.stdout}\n{updated.stderr}"
+
+    answers = yaml.safe_load((feedstock / ".copier-answers.yml").read_text())
+    assert answers["extra_recipes"] == ["second-volume"]
+    assert answers["project_url"] == (
+        "https://github.com/climate-resource/renamed-feedstock"
+    )
+    assert (feedstock / "bookshelf-second-volume.yaml").exists()
+    # The pin is the one answer that must follow the template rather than the feedstock.
+    assert "bookshelf_sdk_version" not in answers
+
+
+def test_a_recorded_answer_survives_for_the_questions_that_choose_files() -> None:
+    """`extra_recipes` decides which recipes exist, so an update cannot re-derive it."""
+    multi_volume = next(
+        generated for generated in FEEDSTOCKS if generated.name == "multi-volume"
+    )
+
+    assert multi_volume.answers["extra_recipes"] == ["second-volume"]
+    assert multi_volume.answers["project_url"].startswith("https://github.com/")
+
+
+def test_no_feedstock_records_the_sdk_pin() -> None:
+    """The template moves the pin, so a recorded answer would freeze a feedstock."""
+    for generated in FEEDSTOCKS:
+        assert "bookshelf_sdk_version" not in generated.answers, generated.name
 
 
 @pytest.mark.parametrize(

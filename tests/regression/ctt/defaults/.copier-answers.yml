@@ -3,7 +3,6 @@ _commit: HEAD
 _src_path: ../../../../copier-bookshelf-dataset
 author: Tim Slim
 author_email: timslim@climate-resource.com
-bookshelf_sdk_version: 1.0.0b8
 dataset_description: Test project made with copier-template-tester
 dataset_name: example
 dataset_name_human: Example Dataset
