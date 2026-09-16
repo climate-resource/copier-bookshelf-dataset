@@ -33,4 +33,4 @@ jobs:
       bump-rule: ${{ inputs.bump_rule }}
       python-version: "3.12"
       create-release: true
-      release-draft: true
+      release-draft: false
