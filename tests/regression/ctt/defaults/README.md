@@ -2,19 +2,13 @@
 
 Test project made with copier-template-tester
 
-This repository is a feedstock:
-it holds the code that turns upstream data into books on the
+This repository is a feedstock containing code that turns upstream data into books on the
 [bookshelf](https://github.com/climate-resource/bookshelf).
-Three things make up the dataset:
 
-- `bookshelf.yaml` is the recipe, holding the metadata.
-  `volume:` names the collection and its search vocabulary,
-  `defaults:` holds what every version shares,
-  and `books:` lists one entry per upstream version of the dataset.
-- `build.py` is a Jupytext percent-format script holding only the processing.
-  It calls `bookshelf.setup()` once, reads each declared input through `build.use(...)`,
-  and writes its outputs with `build.book.write(..., used=[...])`.
-- `inputs/` holds any input checked in alongside the code, rather than fetched from a URL.
+The two key files for a bookshelf feedstock are:
+
+- `bookshelf.yaml` is the recipe declaring the metadata, versions and required versions.
+- `build.py` is the script to process a given version of a dataset into data ready for the bookshelf.
 
 ## Getting started
 
@@ -31,24 +25,14 @@ Then build one version of the dataset:
 ```
 
 `VERSION` picks one entry from `books:` in the recipe.
-The result lands in `bundle/v0.1.0`, validated, with no credentials needed and nothing uploaded.
-
-## Changing the dataset
-
-A new version of the dataset is a new entry under `books:`,
-plus whatever `build.py` needs to process it.
-`visibility:` sets who can see a book: `public`, `org` or `hidden`.
-It applies to everything the build records,
-and `visibility=` on a single `build.book.write(...)` call narrows one resource.
+The result lands in `bundle/v0.1.0` and is then validated.
+This does not upload the result, but can be inspected locally.
 
 ## Publishing
 
-Publishing runs off pull requests, so there is nothing to run by hand and no credentials to set.
-Opening a pull request builds a preview of every version the recipe declares,
-and posts it as a comment that updates on each push.
-Merging publishes that preview, and closing without merging discards it.
+Each pull request builds a preview for each version declared in `bookshelf.yaml`.
+A URL to review the diff between the published versions and the built version are commented to the pull request.
+Merging publishes that preview to the bookshelf.
 
 Everything else about this feedstock lives in the README of
-[copier-bookshelf-dataset](https://github.com/climate-resource/copier-bookshelf-dataset):
-setting the repository up, keeping it in step with the template,
-and what CI does on a pull request.
+[copier-bookshelf-dataset](https://github.com/climate-resource/copier-bookshelf-dataset).
