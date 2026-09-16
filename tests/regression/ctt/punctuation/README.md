@@ -2,28 +2,15 @@
 
 Scenario data for O'Brien's review: quoted, apostrophised and colonised.
 
-This repository contains the code to generate the NGFS "Net Zero" Scenarios book
-for the [bookshelf](https://github.com/climate-resource/bookshelf).
+This repository is a feedstock containing code that turns upstream data into books on the
+[bookshelf](https://github.com/climate-resource/bookshelf).
+
+The two key files for a bookshelf feedstock are:
+
+- `bookshelf.yaml` is the recipe declaring the metadata, versions and required versions.
+- `build.py` is the script to process a given version of a dataset into data ready for the bookshelf.
 
 ## Getting started
-
-Prepare the freshly generated repository:
-
-```bash
-   make initial-setup
-```
-
-That does the `git init`, sets the origin remote, writes `uv.lock` and makes the first commit.
-Recording derives provenance from git, so it needs all three.
-The target is guarded, so re-running it on an existing repository changes nothing.
-
-Once the repository is on GitHub, give it the `bookshelf-feedstock` topic:
-
-```bash
-   gh repo edit --add-topic bookshelf-feedstock
-```
-
-That topic is how every feedstock is found.
 
 Install the local virtual environment:
 
@@ -31,79 +18,21 @@ Install the local virtual environment:
    make virtual-environment
 ```
 
-## Updating from the template
-
-```bash
-   copier update
-```
-
-The template declares no Copier tasks, so this works without `--trust`
-and Renovate can propose template updates on its own.
-
-Each dataset consists of two files:
-
-- `bookshelf.yaml` is the recipe for the metadata about the dataset.
-  `volume:` names the collection and its search vocabulary,
-  `defaults:` holds what every book shares,
-  and `books:` lists one entry per upstream version of the dataset.
-- `build.py` is a standalone Jupytext build file holding only the processing.
-  It calls `bookshelf.setup()` once, reads each declared input through `build.use(...)`,
-  and writes its outputs with `build.book.write(..., used=[...])`.
-
-### Recording a book
-
-A bundle holds one book, so a version selects both what is recorded and where it lands:
+Then build one version of the dataset:
 
 ```bash
    make run VERSION=v0.1.0
 ```
 
-That records and validates `bundle/v0.1.0` without any API credentials.
-
-The target and the CI workflow call the `bookshelf` CLI directly,
-so this repository carries no scripts of its own.
-The same commands are available by hand:
-
-```bash
-   uv run bookshelf record --force --version v0.1.0 --bundle bundle/v0.1.0
-   uv run bookshelf validate bundle/v0.1.0
-```
-
-Each takes `--json` for a machine readable summary, and carries its meaning in the exit code.
-
-CI records and validates every version `books:` declares, and uploads a preview of each one.
-Publishing an unchanged book is idempotent, so a version that has not moved keeps its edition.
-
-### Worked examples
-
-The SDK's [examples README](https://github.com/climate-resource/bookshelf/blob/main/examples/README.md)
-lists the example feedstocks and explains how to use them.
-The [recipe format](https://github.com/climate-resource/bookshelf/blob/main/docs/explanation/recipe-format.md)
-documents every field.
+`VERSION` picks one entry from `books:` in the recipe.
+The result lands in `bundle/v0.1.0` and is then validated.
+This does not upload the result, but can be inspected locally.
 
 ## Publishing
 
-The platform publishes a merged pull request from the sealed preview that passed its check.
-This repository holds no publish credential, because CI never publishes.
+Each pull request builds a preview for each version declared in `bookshelf.yaml`.
+A URL to review the diff between the published versions and the built version are commented to the pull request.
+Merging publishes that preview to the bookshelf.
 
-A first publish into a new volume needs that volume to exist.
-`bookshelf publish` will not create one, so it fails with `Series 'ngfs-scenarios' not found`.
-Create it once, from an account with WRITE:
-
-```bash
-   uv run bookshelf volume create ngfs-scenarios --licence CC-BY-4.0
-```
-
-`visibility` in `bookshelf.yaml` sets the tier of the book and of everything the build records,
-the `build.ipynb` and `build.html` documents included.
-Pass `visibility=` on a single `build.book.write(...)` call to narrow that one resource,
-so a public book can still hold a member only your organisation may read.
-
-A `path:` input is catalogued as a pointer at that repository relative path.
-The platform never re-hosts it, so once the real upstream data is in place,
-move the resource to a `uri:` with the `sha256:` the fetch is checked against.
-
-The recorded bundle also carries the executed script and notebook, so its bundle hash covers the build source.
-Any edit to `build.py`, a comment included, produces a new bundle hash.
-Publishing after a source-only edit therefore creates a new edition whose data is unchanged.
-The underlying resources are deduplicated if they don't change.
+Everything else about this feedstock lives in the README of
+[copier-bookshelf-dataset](https://github.com/climate-resource/copier-bookshelf-dataset).
