@@ -19,7 +19,6 @@ Generating the repository only needs `uv`.
    `--vcs-ref` picks another commit or tag, but Renovate cannot follow an untagged ref.
 
    Copier asks about the dataset, its author and its URL.
-   The Bookshelf SDK version is not a question: the template pins it, and `copier update` moves it.
 
 2. Run `make initial-setup` inside the new repository.
    This does the `git init`, sets the origin remote, writes `uv.lock` and makes the first commit.
