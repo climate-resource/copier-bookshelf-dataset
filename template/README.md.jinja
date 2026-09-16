@@ -2,8 +2,13 @@
 
 {{ dataset_description }}
 
-This repository contains the code to generate the {{dataset_name_human}} book
-for the [bookshelf](https://github.com/climate-resource/bookshelf).
+This repository is a feedstock containing code that turns upstream data into books on the
+[bookshelf](https://github.com/climate-resource/bookshelf).
+
+The two key files for a bookshelf feedstock are:
+
+- `bookshelf.yaml` is the recipe declaring the metadata, versions and required versions.
+- `build.py` is the script to process a given version of a dataset into data ready for the bookshelf.
 
 ## Getting started
 
@@ -13,37 +18,21 @@ Install the local virtual environment:
    make virtual-environment
 ```
 
-A bundle holds one book, so a version selects both what is recorded and where it lands:
+Then build one version of the dataset:
 
 ```bash
    make run VERSION=v0.1.0
 ```
 
-That records and validates `bundle/v0.1.0` without any API credentials.
+`VERSION` picks one entry from `books:` in the recipe.
+The result lands in `bundle/v0.1.0` and is then validated.
+This does not upload the result, but can be inspected locally.
 
-A first publish into a new volume needs that volume to exist.
-`bookshelf publish` will not create one, so it fails with `Series '{{ dataset_name }}' not found`.
-Create it once, from an account with WRITE:
+## Publishing
 
-```bash
-   uv run bookshelf volume create {{ dataset_name }} --licence CC-BY-4.0
-```
-
-## Changing the dataset
-
-The dataset is two files:
-
-- `bookshelf.yaml` is the recipe for the metadata about the dataset.
-  `volume:` names the collection and its search vocabulary,
-  `defaults:` holds what every book shares,
-  and `books:` lists one entry per upstream version of the dataset.
-  `visibility:` sets the tier of the book and of everything the build records,
-  and `visibility=` on a single `build.book.write(...)` call narrows one resource.
-- `build.py` is a Jupytext percent-format script holding only the processing.
-  It calls `bookshelf.setup()` once, reads each declared input through `build.use(...)`,
-  and writes its outputs with `build.book.write(..., used=[...])`.
+Each pull request builds a preview for each version declared in `bookshelf.yaml`.
+A URL to review the diff between the published versions and the built version are commented to the pull request.
+Merging publishes that preview to the bookshelf.
 
 Everything else about this feedstock lives in the README of
-[copier-bookshelf-dataset](https://github.com/climate-resource/copier-bookshelf-dataset):
-setting the repository up, keeping it in step with the template,
-and previewing and publishing a pull request.
+[copier-bookshelf-dataset](https://github.com/climate-resource/copier-bookshelf-dataset).
