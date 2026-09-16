@@ -1,15 +1,12 @@
 # See https://pre-commit.com/hooks.html for more hooks.
-# Renovate moves these revs, so there is no pre-commit.ci autoupdate block.
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: 'v6.0.0'
     hooks:
-      # A feedstock handles data and credentials, so these two are the ones that matter.
       - id: check-added-large-files
       - id: detect-private-key
       - id: check-merge-conflict
-      # Ruff reads neither, and a malformed recipe or Renovate config fails silently.
       - id: check-yaml
       - id: check-json
       - id: end-of-file-fixer
