@@ -27,7 +27,7 @@ on:
         description: Bookshelf API base URL
         required: false
         type: string
-        default: https://api.climateresource.com.au/bookshelf
+        default: https://bookshelf.climateresource.com.au
       sdk-version:
         description: Exact bookshelf version the trusted preview job installs
         required: true
@@ -317,7 +317,8 @@ jobs:
         run: |
           set -euo pipefail
           # shellcheck disable=SC2086 # BUNDLES is a whitespace separated list
-          bookshelf preview upload ${BUNDLES} \
+          bookshelf --api-url "${API_BASE_URL}" \
+          preview upload ${BUNDLES} \
             --repository "${GITHUB_REPOSITORY}" \
             --pr "${PR_NUMBER}" \
             --pr-url "${PR_URL}" \
@@ -325,7 +326,6 @@ jobs:
             --main-sha "${MAIN_SHA}" \
             --tree "${CANDIDATE_TREE}" \
             --run-id "${GITHUB_RUN_ID}" \
-            --api-url "${API_BASE_URL}" \
             --json > preview.json
 
       # A failed preview still exists, so its links are reported too.

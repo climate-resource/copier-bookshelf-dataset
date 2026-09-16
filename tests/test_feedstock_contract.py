@@ -121,7 +121,7 @@ def test_generated_feedstock_calls_reusable_workflows(feedstock: Feedstock) -> N
         ),
         "main-ref": "main",
         "api-base-url": "${{ vars.BOOKSHELF_API_BASE_URL"
-        " || 'https://api.climateresource.com.au/bookshelf' }}",
+        " || 'https://bookshelf.climateresource.com.au' }}",
         "sdk-version": SDK_VERSION,
     }
     triggers = workflow[True]
