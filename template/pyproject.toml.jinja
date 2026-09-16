@@ -8,3 +8,7 @@ dependencies = [
     "bookshelf[publish,dataframes]=={{ bookshelf_sdk_version }}",
     "pandas>=2.2",
 ]
+
+[tool.uv]
+exclude-newer = "3 days"
+exclude-newer-package = { bookshelf = false }
