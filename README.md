@@ -7,7 +7,7 @@ The template itself lives in `template`.
 
 ## Creating a feedstock
 
-You only need `uv` installed.
+Generating the repository only needs `uv`.
 
 1. Generate the repository:
 
