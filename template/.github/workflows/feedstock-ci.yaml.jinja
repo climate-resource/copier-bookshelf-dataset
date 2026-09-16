@@ -25,5 +25,5 @@ jobs:
         bookshelf-{{ recipe }}.yaml
 {% endfor %}
       main-ref: main
-      api-base-url: ${{ '{{' }} vars.BOOKSHELF_API_BASE_URL || 'https://api.climateresource.com.au/bookshelf' }}
+      api-base-url: ${{ '{{' }} vars.BOOKSHELF_API_BASE_URL || 'https://bookshelf.climateresource.com.au' }}
       sdk-version: {{ bookshelf_sdk_version | tojson }}
