@@ -38,6 +38,10 @@ def test_generated_feedstock_uses_record_and_replay_shape(feedstock: Feedstock) 
     # and nothing sources it from git.
     assert f'"bookshelf[publish,dataframes]=={SDK_VERSION}"' in pyproject
     assert "[tool.uv.sources]" not in pyproject
+    # New releases soak for three days before uv resolves them, except the SDK itself.
+    uv = tomllib.loads(pyproject)["tool"]["uv"]
+    assert uv["exclude-newer"] == "3 days"
+    assert uv["exclude-newer-package"] == {"bookshelf": False}
     assert '"build.py" = [' in ruff
     assert '"E402"' in ruff
     assert 'src = [\n    ".",' in ruff
