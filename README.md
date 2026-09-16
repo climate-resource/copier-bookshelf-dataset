@@ -64,8 +64,9 @@ When the pull request merges, the platform publishes the preview that passed its
 Closing without merging leaves the preview unpublished.
 Pushes to `main`, the weekly schedule and manual dispatch build and validate without uploading previews.
 
-The Bookshelf Github App provides the required credentials for publishing.
-Fork pull requests skip preview uploads to avoid leaking these credentials.
+The Bookshelf GitHub App holds the publishing credentials,
+so a feedstock needs no publish credential of its own.
+Fork pull requests skip preview uploads, because they cannot mint a token for the upstream repository.
 CI reads the API URL from the `BOOKSHELF_API_BASE_URL` repository variable and falls back to production.
 
 ### How the build is locked down
@@ -162,6 +163,10 @@ at the expense of verbose pull requests.
 
 The pre-commit hook runs ctt on every commit, so the fixtures normally update on their own.
 `make ctt` runs it by hand.
+On a Renovate pull request the `Regenerate fixtures` workflow runs ctt
+and pushes the result back to the branch.
+That push uses the organisation `PERSONAL_ACCESS_TOKEN` secret,
+because a `GITHUB_TOKEN` push would not re-run CI.
 
 ### Tests
 
