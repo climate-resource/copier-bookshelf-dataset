@@ -308,7 +308,7 @@ jobs:
       # The identity comes from the event and the candidate job, which PR code cannot overwrite.
       - name: Upload the preview
         env:
-          API_BASE_URL: ${{ inputs.api-base-url }}
+          BOOKSHELF_API_URL: ${{ inputs.api-base-url }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           MAIN_SHA: ${{ needs.candidate.outputs.main-sha }}
           CANDIDATE_TREE: ${{ needs.candidate.outputs.candidate-tree }}
@@ -317,8 +317,7 @@ jobs:
         run: |
           set -euo pipefail
           # shellcheck disable=SC2086 # BUNDLES is a whitespace separated list
-          bookshelf --api-url "${API_BASE_URL}" \
-          preview upload ${BUNDLES} \
+          bookshelf preview upload ${BUNDLES} \
             --repository "${GITHUB_REPOSITORY}" \
             --pr "${PR_NUMBER}" \
             --pr-url "${PR_URL}" \
