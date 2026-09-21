@@ -42,10 +42,10 @@ def test_generated_feedstock_uses_record_and_replay_shape(feedstock: Feedstock) 
     uv = tomllib.loads(pyproject)["tool"]["uv"]
     assert uv["exclude-newer"] == "3 days"
     assert uv["exclude-newer-package"] == {"bookshelf": False}
-    assert '"build.py" = [' in ruff
-    assert '"E402"' in ruff
-    assert 'src = [\n    ".",' in ruff
-    assert 'known-first-party = [\n    "build",' in ruff
+    # The config carries house style only, so the ruff defaults stay out of it.
+    assert 'convention = "numpy"' in ruff
+    for defaulted in ("line-length", "target-version", "src = ", "per-file-ignores"):
+        assert defaulted not in ruff
     assert "VERSION ?= v0.1.0" in makefile
     assert "BUNDLE := bundle/$(VERSION)" in makefile
     assert (
@@ -148,6 +148,20 @@ def test_generated_feedstock_calls_reusable_workflows(feedstock: Feedstock) -> N
         "steps:",
     ):
         assert forbidden not in ci
+
+
+def test_generated_feedstock_guards_against_committing_data_and_secrets(
+    feedstock: Feedstock,
+) -> None:
+    """A feedstock handles data and credentials, so the hooks that catch them stay."""
+    hooks = yaml.safe_load(feedstock.read(".pre-commit-config.yaml"))
+
+    ids = {hook["id"] for repo in hooks["repos"] for hook in repo["hooks"]}
+
+    assert {"check-added-large-files", "detect-private-key", "forbidden-files"} <= ids
+    assert {"ruff-check", "ruff-format", "uv-lock"} <= ids
+    # Ruff parses neither, so the recipe and the Renovate config need their own hooks.
+    assert {"check-yaml", "check-json"} <= ids
 
 
 def test_caller_templates_derive_the_reusable_workflow_ref() -> None:
