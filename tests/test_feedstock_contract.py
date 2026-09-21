@@ -36,7 +36,7 @@ def test_generated_feedstock_uses_record_and_replay_shape(feedstock: Feedstock) 
     assert "await " not in build
     # The SDK is a beta on PyPI, so the specifier names it
     # and nothing sources it from git.
-    assert f'"bookshelf[publish,dataframes]=={SDK_VERSION}"' in pyproject
+    assert f'"bookshelf[publish]=={SDK_VERSION}"' in pyproject
     assert "[tool.uv.sources]" not in pyproject
     # New releases soak for three days before uv resolves them, except the SDK itself.
     uv = tomllib.loads(pyproject)["tool"]["uv"]
@@ -130,8 +130,7 @@ def test_generated_feedstock_calls_reusable_workflows(feedstock: Feedstock) -> N
             + [f"bookshelf-{name}.yaml" for name in feedstock.answers["extra_recipes"]]
         ),
         "main-ref": "main",
-        "api-base-url": "${{ vars.BOOKSHELF_API_URL"
-        " || 'https://bookshelf.climateresource.com.au' }}",
+        "api-base-url": "${{ vars.BOOKSHELF_API_URL }}",
         "sdk-version": SDK_VERSION,
     }
     triggers = workflow[True]
