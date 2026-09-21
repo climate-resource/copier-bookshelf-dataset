@@ -27,7 +27,7 @@ on:
         description: Bookshelf API base URL
         required: false
         type: string
-        default: https://api.climateresource.com.au/bookshelf
+        default: https://bookshelf.climateresource.com.au
       sdk-version:
         description: Exact bookshelf version the trusted preview job installs
         required: true
@@ -308,7 +308,7 @@ jobs:
       # The identity comes from the event and the candidate job, which PR code cannot overwrite.
       - name: Upload the preview
         env:
-          API_BASE_URL: ${{ inputs.api-base-url }}
+          BOOKSHELF_API_URL: ${{ inputs.api-base-url }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           MAIN_SHA: ${{ needs.candidate.outputs.main-sha }}
           CANDIDATE_TREE: ${{ needs.candidate.outputs.candidate-tree }}
@@ -325,7 +325,6 @@ jobs:
             --main-sha "${MAIN_SHA}" \
             --tree "${CANDIDATE_TREE}" \
             --run-id "${GITHUB_RUN_ID}" \
-            --api-url "${API_BASE_URL}" \
             --json > preview.json
 
       # A failed preview still exists, so its links are reported too.

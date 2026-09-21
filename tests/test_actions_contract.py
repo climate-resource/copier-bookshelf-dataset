@@ -178,6 +178,7 @@ def test_ci_uploads_the_preview_from_a_trusted_job() -> None:
     assert "sdk-version:" in workflow
     assert "api-base-url:" in workflow
     assert 'uv tool install "bookshelf==${SDK_VERSION}"' in workflow
+    assert "BOOKSHELF_API_URL: ${{ inputs.api-base-url }}" in workflow
     assert "bookshelf preview upload ${BUNDLES}" in workflow
     assert "preview_inputs.py" in workflow
     assert "name: bookshelf-preview" in workflow

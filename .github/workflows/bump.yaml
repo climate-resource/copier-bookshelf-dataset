@@ -1,7 +1,7 @@
 name: Bump version
 
 # Manually bump the version, build the CHANGELOG from the changelog/ fragments,
-# tag, and draft the GitHub release.
+# tag, and publish the GitHub release.
 #
 # The work lives in the shared climate-resource/github-actions workflow.
 
@@ -33,4 +33,4 @@ jobs:
       bump-rule: ${{ inputs.bump_rule }}
       python-version: "3.12"
       create-release: true
-      release-draft: true
+      release-draft: false
