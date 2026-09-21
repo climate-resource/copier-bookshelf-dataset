@@ -23,4 +23,4 @@ jobs:
         bookshelf.yaml
       main-ref: main
       api-base-url: ${{ vars.BOOKSHELF_API_URL || 'https://bookshelf.climateresource.com.au' }}
-      sdk-version: "1.0.0b8"
+      sdk-version: "1.0.0b13"

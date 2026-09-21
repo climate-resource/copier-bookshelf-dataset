@@ -46,7 +46,7 @@ bookshelf_sdk_version:
     type: str
     when: false
     help: Which exact Bookshelf SDK version should the feedstock and preview job use?
-    default: "1.0.0b8"
+    default: "1.0.0b13"
 
 extra_recipes:
     type: yaml
