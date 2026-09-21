@@ -21,6 +21,69 @@ from the examples given in that link.
 
 <!-- towncrier release notes start -->
 
+## copier-bookshelf-dataset v0.5.0 (2026-09-21)
+
+### Breaking Changes
+
+- Removed the `Feedstock publish` reusable workflow, its generated caller and the `release: published` trigger.
+  The platform now publishes a merged pull request from the sealed preview that passed its required check,
+  so a feedstock needs no `deploy` environment and no M2M publish credential.
+  A bump publishes its GitHub release rather than drafting it, because the release publishes no data.
+  Deleted `docs/runbooks/release-pilot.md` and `scripts/release-pilot.sh` with the path they drove.
+  Removed the bump workflow, towncrier configuration, changelog directory and dev dependencies from a generated feedstock.
+  A feedstock cuts no releases, because the platform publishes on merge and the pull request is its record. ([#37](https://github.com/climate-resource/copier-bookshelf-dataset/pull/37))
+
+### Improvements
+
+- Dropped the issue and pull request templates from a generated feedstock, so it ships only what recording needs. ([#37](https://github.com/climate-resource/copier-bookshelf-dataset/pull/37))
+- Replaced the stock Python `.gitignore` in a generated feedstock with a short one.
+  It names only what a feedstock produces: the bundle, the virtual environment, the tool caches and macOS clutter.
+  A `copier update` rejection stays visible, so the `forbidden files` hook can still refuse to commit one. ([#43](https://github.com/climate-resource/copier-bookshelf-dataset/pull/43))
+- Cut the generated `renovate.json` down to the two rules that keep Renovate away from the Copier owned pins,
+  plus the `copier` and `pre-commit` managers.
+  Everything else was a preference the file restated, so a feedstock now takes it from `config:best-practices`.
+  Lock file maintenance survives the trim, because that preset already runs it early on a Monday.
+
+  Moves the three day soak for new Python releases from Renovate into uv,
+  as `exclude-newer` in the generated `pyproject.toml`.
+  This applies to every `uv lock` and `uv sync`, not only to Renovate pull requests.
+  `bookshelf` is exempt, so a feedstock can pick up a fresh SDK release straight away. ([#44](https://github.com/climate-resource/copier-bookshelf-dataset/pull/44))
+- Trimmed the generated `ruff.toml` and `.pre-commit-config.yaml` from 93 lines to 45.
+  The ruff config now carries house style only,
+  because ruff reads the Python version and the line length from `pyproject.toml`.
+  The pre-commit config keeps the hooks that stop a feedstock committing data, keys or Copier rejection files,
+  and drops the ones ruff already covers.
+  It keeps `check-yaml` and `check-json`, because ruff parses neither,
+  and a malformed recipe or Renovate config otherwise fails silently.
+  Dropping the per-file ignores changes behaviour rather than only shortening the file:
+  a test file a feedstock adds later now has `D`, `S101` and `PLR2004` applied to it,
+  where the old config exempted all three.
+  Renovate moves the hook revisions, so the pre-commit.ci autoupdate block is gone. ([#45](https://github.com/climate-resource/copier-bookshelf-dataset/pull/45))
+- Trimmed the feedstock questions from eight to seven.
+  `dataset_name_human` now defaults to `dataset_name` with hyphens replaced and words capitalised.
+  Enter is the right answer for a conventional name, and the prompt is still there to fix the casing.
+  Stopped asking for the Bookshelf SDK version, because the reusable workflow installs exactly that version.
+  It follows the template now, so `copier update` is the only thing that moves the pin. ([#46](https://github.com/climate-resource/copier-bookshelf-dataset/pull/46))
+- Trimmed the generated README to the dataset itself: what it is, how to build it and how to change it.
+  The platform and CI narrative now lives only in this template's README, which the generated one links to. ([#47](https://github.com/climate-resource/copier-bookshelf-dataset/pull/47))
+- Reworked this template's README around the steps to create, publish from and update a feedstock.
+  Moved the CI internals and fleet maintenance notes under template development.
+  Changed the default Bookshelf API URL to `https://bookshelf.climateresource.com.au`.
+  Passed the API URL to the preview upload through `BOOKSHELF_API_URL`.
+  Made the bump workflow publish the GitHub release instead of drafting it.
+  Renamed the repository variable for the API URL to `BOOKSHELF_API_URL`, matching the SDK. ([#49](https://github.com/climate-resource/copier-bookshelf-dataset/pull/49))
+- Raised the scaffolded `bookshelf` pin to 1.0.0b13.
+  That release makes production the SDK's default deployment,
+  so a scaffolded feedstock reaches the live platform without a deployment override. ([#50](https://github.com/climate-resource/copier-bookshelf-dataset/pull/50))
+- Dropped the `dataframes` extra from the scaffolded dependency, because pandas and pyarrow are core to the SDK.
+  Stopped writing the production API URL into the workflows, because that is the SDK default from 1.0.0b13.
+  Setting the `BOOKSHELF_API_URL` repository variable still selects another deployment. ([#51](https://github.com/climate-resource/copier-bookshelf-dataset/pull/51))
+
+### Improved Documentation
+
+- Documented how a fleet of feedstocks is kept in sync: the topic that finds them, the Renovate copier manager that updates each one, and a mani fan-out for the rest. ([#37](https://github.com/climate-resource/copier-bookshelf-dataset/pull/37))
+
+
 ## copier-bookshelf-dataset v0.4.1 (2026-09-13)
 
 ### Bug Fixes

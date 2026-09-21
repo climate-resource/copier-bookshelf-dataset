@@ -1,6 +1,6 @@
 [project]
 name = "copier-bookshelf-dataset"
-version = "0.4.2.dev1"
+version = "0.5.0"
 description = "Copier template for a bookshelf dataset"
 readme = "README.md"
 requires-python = ">=3.12"
