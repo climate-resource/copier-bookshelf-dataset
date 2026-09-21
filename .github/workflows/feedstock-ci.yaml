@@ -24,10 +24,10 @@ on:
         type: string
         default: main
       api-base-url:
-        description: Bookshelf API base URL
+        description: Bookshelf API base URL. Empty means the SDK's own default, which is production.
         required: false
         type: string
-        default: https://bookshelf.climateresource.com.au
+        default: ""
       sdk-version:
         description: Exact bookshelf version the trusted preview job installs
         required: true
