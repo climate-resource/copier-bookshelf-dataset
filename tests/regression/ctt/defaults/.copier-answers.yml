@@ -1,6 +1,6 @@
 # Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
 _commit: HEAD
-_src_path: ../../../../feat-actions-oidc-reads
+_src_path: ../../../../copier-bookshelf-dataset
 author: Tim Slim
 author_email: timslim@climate-resource.com
 dataset_description: Test project made with copier-template-tester
