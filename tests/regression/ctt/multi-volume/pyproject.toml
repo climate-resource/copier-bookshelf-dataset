@@ -5,7 +5,7 @@ description = "Two volumes built from one feedstock."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "bookshelf[publish]==1.0.0b13",
+    "bookshelf[publish]==1.0.0b14",
     "pandas>=2.2",
 ]
 

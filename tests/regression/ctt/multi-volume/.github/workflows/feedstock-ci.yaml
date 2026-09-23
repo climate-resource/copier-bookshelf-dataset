@@ -24,4 +24,4 @@ jobs:
         bookshelf-second-volume.yaml
       main-ref: main
       api-base-url: ${{ vars.BOOKSHELF_API_URL }}
-      sdk-version: "1.0.0b13"
+      sdk-version: "1.0.0b14"

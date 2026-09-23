@@ -1,6 +1,6 @@
 # Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
 _commit: HEAD
-_src_path: ../../../../copier-bookshelf-dataset
+_src_path: ../../../../feat-actions-oidc-reads
 author: Ada Lovelace
 author_email: ada.lovelace@climate-resource.com
 dataset_description: Historical national emissions, hyphenated and numbered.

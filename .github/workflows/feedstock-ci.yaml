@@ -154,8 +154,7 @@ jobs:
     name: Record ${{ matrix.target.volume }} ${{ matrix.target.version }}
     needs: [candidate, targets]
     runs-on: ubuntu-latest
-    # Recording resolves the recipe's `bookshelf://` inputs, which for an org's private
-    # books and uploaded files reads as the organisation that enrolled the repository.
+    # Reads the recipe's `bookshelf://` inputs as the organisation that enrolled the repository.
     permissions:
       contents: read
       id-token: write
@@ -260,7 +259,6 @@ jobs:
             --conflict "${CONFLICT}" \
             | tee -a "${GITHUB_STEP_SUMMARY}"
 
-  # The one job that can write through its OIDC token, so it never runs a line of the pull request.
   preview:
     name: upload preview
     if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
