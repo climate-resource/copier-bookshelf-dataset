@@ -21,6 +21,13 @@ from the examples given in that link.
 
 <!-- towncrier release notes start -->
 
+## copier-bookshelf-dataset v0.5.2 (2026-09-23)
+
+### Features
+
+- Feedstock CI now reads an organisation's private `bookshelf://` inputs with the workflow's own GitHub Actions token, so a recipe depending on an org-visible book or an uploaded file records in CI without a stored secret. This needs the Bookshelf GitHub App installed on the repository. ([#53](https://github.com/climate-resource/copier-bookshelf-dataset/pull/53))
+
+
 ## copier-bookshelf-dataset v0.5.0 (2026-09-21)
 
 ### Breaking Changes
