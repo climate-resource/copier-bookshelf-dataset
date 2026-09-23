@@ -69,11 +69,23 @@ so a feedstock needs no publish credential of its own.
 Fork pull requests skip preview uploads, because they cannot mint a token for the upstream repository.
 CI reads the API URL from the `BOOKSHELF_API_URL` repository variable and falls back to production.
 
+### Private inputs
+
+A recipe may name a `bookshelf://` input that only the organisation can read,
+either an org-visible book or a file put up with `bookshelf upload`.
+The record jobs read those with the workflow's own GitHub Actions token, not a stored secret,
+so the Bookshelf GitHub App must be installed on the repository for them to resolve.
+Without the App the record job fails with
+`which your organisation does not hold`, and the feedstock builds locally only.
+
+The token is read-only: the API refuses it on every write route,
+and it is never minted on a fork pull request or a `pull_request_target` run.
+
 ### How the build is locked down
 
 CI merges the pull request head with the current `main` to build the candidate,
 and records and validates each `(volume, version)` target in its own job.
-Only the `upload preview` job can mint a GitHub Actions OIDC token.
+Only the `upload preview` job can write through its GitHub Actions OIDC token.
 It installs the pinned SDK and this template's helpers without checking out pull request code.
 
 The reusable workflow lives under `.github/workflows`, with its composite action in `actions/record-bundle`.

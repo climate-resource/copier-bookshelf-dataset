@@ -147,12 +147,22 @@ def test_ci_gates_readiness_on_every_expected_book() -> None:
     assert "cancel-in-progress: true" in workflow
 
 
+def test_ci_records_with_the_repository_read_token() -> None:
+    """A private `bookshelf://` input is read by the job's own Actions token."""
+    workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
+    record = yaml.safe_load(workflow)["jobs"]["record"]
+
+    assert record["permissions"] == {"contents": "read", "id-token": "write"}
+    assert record["env"]["BOOKSHELF_AUTH"] == "github-actions"
+    assert record["env"]["BOOKSHELF_API_URL"] == "${{ inputs.api-base-url }}"
+
+
 def test_ci_uploads_the_preview_from_a_trusted_job() -> None:
-    """One job mints the OIDC token, and it runs nothing out of the pull request."""
+    """One job writes through its OIDC token, and runs no pull request code."""
     workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
     preview = yaml.safe_load(workflow)["jobs"]["preview"]
 
-    assert workflow.count("id-token: write") == 1
+    assert workflow.count("id-token: write") == 2
     assert preview["permissions"] == {"contents": "read", "id-token": "write"}
     assert preview["needs"] == ["candidate", "targets", "record"]
     assert "head.repo.full_name == github.repository" in preview["if"]

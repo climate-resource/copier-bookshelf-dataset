@@ -34,5 +34,10 @@ Each pull request builds a preview for each version declared in `bookshelf.yaml`
 A URL to review the diff between the published versions and the built version are commented to the pull request.
 Merging publishes that preview to the bookshelf.
 
+If the recipe names a `bookshelf://` input that only the organisation can read,
+CI resolves it with the workflow's own GitHub Actions token rather than a stored secret.
+That needs the Bookshelf GitHub App installed on this repository,
+otherwise the build works locally but every record job fails in CI.
+
 Everything else about this feedstock lives in the README of
 [copier-bookshelf-dataset](https://github.com/climate-resource/copier-bookshelf-dataset).
