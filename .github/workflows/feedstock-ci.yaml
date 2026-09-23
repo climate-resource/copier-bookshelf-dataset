@@ -154,6 +154,13 @@ jobs:
     name: Record ${{ matrix.target.volume }} ${{ matrix.target.version }}
     needs: [candidate, targets]
     runs-on: ubuntu-latest
+    # Reads the recipe's `bookshelf://` inputs as the organisation that enrolled the repository.
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      BOOKSHELF_AUTH: github-actions
+      BOOKSHELF_API_URL: ${{ inputs.api-base-url }}
     strategy:
       fail-fast: false
       matrix:
@@ -252,7 +259,6 @@ jobs:
             --conflict "${CONFLICT}" \
             | tee -a "${GITHUB_STEP_SUMMARY}"
 
-  # The one job that can mint the OIDC token, so it never runs a line of the pull request.
   preview:
     name: upload preview
     if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
