@@ -21,6 +21,22 @@ from the examples given in that link.
 
 <!-- towncrier release notes start -->
 
+## copier-bookshelf-dataset v0.6.0 (2026-10-05)
+
+### Features
+
+- Generated feedstocks now pin `bookshelf[publish]==1.0.0`, the first stable SDK release.
+  The `dataframes` extra is gone in 1.0, so feedstocks still asking for `bookshelf[dataframes]` should drop it when they update. ([#59](https://github.com/climate-resource/copier-bookshelf-dataset/pull/59))
+
+### Bug Fixes
+
+- Generated feedstocks now ignore the `.bundle-record-*/` and `.bundle-backup-*/` directories `bookshelf record` creates beside `bundle/`, so a clean checkout no longer records a `+dirty` code ref. ([#55](https://github.com/climate-resource/copier-bookshelf-dataset/pull/55))
+
+### Trivial/Internal Changes
+
+- [#56](https://github.com/climate-resource/copier-bookshelf-dataset/pull/56)
+
+
 ## copier-bookshelf-dataset v0.5.2 (2026-09-23)
 
 ### Features
