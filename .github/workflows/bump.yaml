@@ -26,7 +26,7 @@ on:
 
 jobs:
   bump:
-    uses: climate-resource/github-actions/.github/workflows/bump.yaml@v1.6.0
+    uses: climate-resource/github-actions/.github/workflows/bump.yaml@4760a617b4820ca47e69034e8f926b754d6d4192 # v1.8.1
     permissions:
       contents: write
     with:

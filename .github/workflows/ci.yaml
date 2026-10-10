@@ -71,7 +71,7 @@ jobs:
         # actionlint is not on PATH.
         env:
           # renovate: datasource=github-releases depName=rhysd/actionlint
-          ACTIONLINT_VERSION: "1.7.9"
+          ACTIONLINT_VERSION: "1.7.12"
         run: |
           set -euo pipefail
           curl --proto '=https' --tlsv1.2 -sSfL \
