@@ -33,7 +33,7 @@ repos:
         language: fail
         files: "\\.rej$"
   - repo: https://github.com/KyleKing/copier-template-tester
-    rev: 2.5.0
+    rev: 3.0.0
     hooks:
       - id: copier-template-tester
   - repo: https://github.com/astral-sh/ruff-pre-commit
