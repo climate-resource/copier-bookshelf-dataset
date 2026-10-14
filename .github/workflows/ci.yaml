@@ -37,7 +37,7 @@ jobs:
       - name: Install the project
         run: uv sync --locked
       - name: Cache pre-commit
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: /tmp/.cache/pre-commit
           key: ${{ runner.os }}-pre-commit
