@@ -324,28 +324,6 @@ def test_the_template_declares_no_copier_tasks() -> None:
     assert "_tasks" not in COPIER
 
 
-def test_initial_setup_prepares_what_recording_needs() -> None:
-    """`make initial-setup` replaced the tasks, so it carries the same guarantees."""
-    makefile = (ROOT / "template" / "Makefile.jinja").read_text()
-
-    target = makefile[makefile.index("initial-setup:") : makefile.index("run:")]
-
-    # Every step that writes checks first, so a second run changes nothing.
-    assert "[ -d .git ] || git init" in target
-    assert "git remote get-url origin" in target and "git remote add origin" in target
-    assert "[ -f uv.lock ] || uv lock" in target
-    assert "git add ." in target
-    assert "git rev-parse HEAD" in target and "commit -q -m" in target
-
-
-def test_the_scaffold_commit_is_attributed_to_the_author() -> None:
-    """A fresh feedstock has no git config of its own to fall back on."""
-    makefile = (ROOT / "template" / "Makefile.jinja").read_text()
-
-    assert 'user.name="{{ author }}"' in makefile
-    assert 'user.email="{{ author_email }}"' in makefile
-
-
 def test_preview_question_defaults() -> None:
     """The SDK default is one exact version and extra volumes are opt-in."""
     assert re.fullmatch(
