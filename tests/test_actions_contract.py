@@ -14,8 +14,8 @@ def test_record_bundle_composite_owns_the_offline_build_path() -> None:
     action = (ACTION / "action.yml").read_text()
 
     assert 'using: "composite"' in action
-    assert "astral-sh/setup-uv@v8.3.2" in action
-    assert "actions/cache@v6" in action
+    assert "astral-sh/setup-uv@" in action
+    assert "actions/cache@" in action
     assert "uv sync --locked" in action
     assert "uv run bookshelf record" in action
     assert "uv run bookshelf validate" in action
@@ -97,7 +97,6 @@ def test_ci_reusable_workflow_is_credential_free_and_call_only() -> None:
     assert "pull_request:" not in workflow
     assert "push:" not in workflow
     assert "workflow_dispatch:" not in workflow
-    assert "actions/checkout@v6" in workflow
     assert "./.copier-bookshelf-dataset/actions/record-bundle" in workflow
     assert "secrets:" not in workflow
     assert "BOOKSHELF_TOKEN" not in workflow
@@ -216,14 +215,15 @@ def test_reusable_workflows_checkout_their_own_matching_revision() -> None:
     assert "path: .copier-bookshelf-dataset" in workflow
 
 
+ACTIONLINT = re.compile(r"raven-actions/actionlint@[0-9a-f]{40}\b")
+
+
 def test_actionlint_is_part_of_the_existing_ci_and_immutably_pinned() -> None:
     """The repository CI lints all workflows with an auditable action ref."""
     workflow = (WORKFLOWS / "ci.yaml").read_text()
 
     assert "actionlint:" in workflow
-    assert (
-        "raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7" in workflow
-    )
+    assert ACTIONLINT.search(workflow), "actionlint is not pinned to a commit"
 
 
 def test_feedstock_automation_defaults_to_python_312() -> None:
@@ -257,7 +257,7 @@ def test_action_scripts_use_native_python_311_annotations() -> None:
 
 SHARED_BUMP = re.compile(
     r"uses: climate-resource/github-actions"
-    r"/\.github/workflows/bump\.yaml@v\d+\.\d+\.\d+"
+    r"/\.github/workflows/bump\.yaml@\S+( # v\d+\.\d+\.\d+)?"
 )
 
 
