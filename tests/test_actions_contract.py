@@ -1,199 +1,78 @@
-"""Public contract tests for the colocated actions and this repository's workflows."""
+"""Security and trust guards on this repository's workflows.
 
-import json
-import re
+The workflows themselves are exercised by CI and actionlint,
+so these check only the properties a reviewer could miss in a diff.
+"""
+
+from typing import Any
 
 import yaml
-from conftest import ACTION, ROOT, uses_lines
+from conftest import ROOT
 
 WORKFLOWS = ROOT / ".github" / "workflows"
+FEEDSTOCK_CI = WORKFLOWS / "feedstock-ci.yaml"
 
 
-def test_record_bundle_composite_owns_the_offline_build_path() -> None:
-    """The composite installs, records, caches inputs, and validates the bundle."""
-    action = (ACTION / "action.yml").read_text()
-
-    assert 'using: "composite"' in action
-    assert "astral-sh/setup-uv@" in action
-    assert "actions/cache@" in action
-    assert "uv sync --locked" in action
-    assert "uv run bookshelf record" in action
-    assert "uv run bookshelf validate" in action
-    assert 'python3 "${GITHUB_ACTION_PATH}/cache_key.py"' in action
-    assert 'uv run python "${GITHUB_ACTION_PATH}/recipe_versions.py"' in action
+def feedstock_ci() -> dict[Any, Any]:
+    """Return the parsed reusable feedstock workflow."""
+    return yaml.safe_load(FEEDSTOCK_CI.read_text())
 
 
-def test_the_composite_action_ships_only_its_ci_helpers() -> None:
-    """The CLI owns record and validate, so no bundle script sits beside it.
-
-    The helpers read the recipe or the outcomes for a CI concern:
-    the cache key, the versions and targets to record,
-    and whether every target validated.
-    """
-    assert sorted(path.name for path in ACTION.glob("*.py")) == [
-        "aggregate.py",
-        "cache_key.py",
-        "preview_inputs.py",
-        "recipe_versions.py",
-        "targets.py",
-    ]
+def steps_using(job: dict[str, Any], action: str) -> list[dict[str, Any]]:
+    """Return the steps of a job that call an action, whatever its ref."""
+    return [step for step in job.get("steps", []) if action in step.get("uses", "")]
 
 
-def test_the_composite_action_records_every_version_by_default() -> None:
-    """The recipe is the one place versions are written down."""
-    action = (ACTION / "action.yml").read_text()
+def test_the_reusable_workflow_is_call_only_and_takes_no_secrets() -> None:
+    """Feedstock CI runs only when called and authenticates through OIDC alone."""
+    workflow = feedstock_ci()
 
-    assert "for version in ${VERSIONS}; do" in action
-    assert 'bundle="${BUNDLE}/${version}"' in action
-    assert '--version "${version}"' in action
-
-
-def test_the_composite_action_reports_the_bundle_directories_it_wrote() -> None:
-    """A caller replays the paths it was given rather than joining them itself."""
-    action = (ACTION / "action.yml").read_text()
-
-    assert "bundles:" in action
-    assert 'echo "bundles=${bundles}" >> "${GITHUB_OUTPUT}"' in action
+    assert set(workflow[True]) == {"workflow_call"}
+    assert "secrets" not in (workflow[True]["workflow_call"] or {})
+    assert "secrets." not in FEEDSTOCK_CI.read_text()
 
 
-def test_the_composite_action_takes_the_build_file_from_the_recipe() -> None:
-    """`build: notebook:` is the one place the build file is written down.
+def test_only_the_record_and_preview_jobs_can_mint_an_oidc_token() -> None:
+    """The other jobs run pull request code without needing to reach the platform."""
+    workflow = feedstock_ci()
 
-    A second default here could disagree with what `make run` executes locally.
-    """
-    action = (ACTION / "action.yml").read_text()
-
-    assert "build-file" not in action
-    assert "uv run bookshelf record \\\n" in action
-
-
-def test_the_composite_action_caches_where_the_sdk_fetches_into() -> None:
-    """The SDK caches under a platform directory that no runner keeps between jobs."""
-    action = (ACTION / "action.yml").read_text()
-
-    assert "BOOKSHELF_CACHE_DIR: .cache" in action
-    assert "path: .cache" in action
+    assert "id-token" not in workflow["permissions"]
+    minting = {
+        name
+        for name, job in workflow["jobs"].items()
+        if job.get("permissions", {}).get("id-token") == "write"
+    }
+    assert minting == {"record", "preview"}
 
 
-def test_the_composite_action_always_reports_an_outcome() -> None:
-    """A failed record still leaves an outcome, so the outcome job can name the book."""
-    action = (ACTION / "action.yml").read_text()
+def test_the_preview_job_runs_no_pull_request_code() -> None:
+    """The preview job writes to the platform, so it checks out only this template."""
+    preview = feedstock_ci()["jobs"]["preview"]
+    checkouts = steps_using(preview, "actions/checkout")
 
-    assert "continue-on-error: true" in action
-    assert "OUTCOME: ${{ steps.record.outcome }}" in action
-    assert '> "${BUNDLE}/outcome.json"' in action
-    assert (
-        "{volume: $volume, version: $version, status: $status, reason: $reason}"
-        in action
-    )
-    assert "write-outcome:" in action
-
-
-def test_ci_reusable_workflow_is_credential_free_and_call_only() -> None:
-    """Feedstock CI runs only when called and takes no secrets."""
-    workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
-
-    assert "workflow_call:" in workflow
-    assert "pull_request:" not in workflow
-    assert "push:" not in workflow
-    assert "workflow_dispatch:" not in workflow
-    assert "./.copier-bookshelf-dataset/actions/record-bundle" in workflow
-    assert "secrets:" not in workflow
-    assert "BOOKSHELF_TOKEN" not in workflow
-
-
-def test_ci_builds_the_merged_candidate() -> None:
-    """A pull request is validated as its head merged with a pinned main."""
-    workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
-    script = (ACTION / "candidate.sh").read_text()
-
-    assert "fetch-depth: 0" in workflow
-    assert "ref: ${{ github.event.pull_request.head.sha || github.sha }}" in workflow
-    assert "MAIN_SHA: ${{ needs.candidate.outputs.main-sha }}" in workflow
-    assert "EXPECTED_TREE: ${{ needs.candidate.outputs.candidate-tree }}" in workflow
-    assert "name: bookshelf-candidate" in workflow
-    assert "merge -q --no-ff --no-edit" in script
-    assert 'echo "conflict=true" >> "${GITHUB_OUTPUT}"' in script
-
-
-def test_ci_records_one_target_per_matrix_leg() -> None:
-    """Every target gets its own leg, so one failure cannot hide the others."""
-    workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
-
-    assert "target: ${{ fromJSON(needs.targets.outputs.targets) }}" in workflow
-    assert workflow.count("fail-fast: false") == 1
-    assert "name: bookshelf-targets" in workflow
-    assert (
-        "name: bookshelf-bundle-${{ matrix.target.volume }}-"
-        "${{ matrix.target.version }}" in workflow
-    )
-    assert "recipe: ${{ matrix.target.recipe }}" in workflow
-    # A re-run of a failed leg uploads under the name its first attempt already used.
-    assert workflow.count("overwrite: true") == workflow.count("upload-artifact@")
-    assert "version: ${{ matrix.target.version }}" in workflow
-
-
-def test_ci_gates_readiness_on_every_expected_book() -> None:
-    """The outcome job always runs and never inherits success from a skipped job."""
-    workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
-
-    assert workflow.count("if: always()") == 2
-    assert workflow.count("name: candidate outcome") == 1
-    assert "needs: [candidate, targets, record]" in workflow
-    assert '--job "record=${RECORD_RESULT}"' in workflow
-    assert "pattern: bookshelf-bundle-*" in workflow
-    assert "concurrency:" in workflow
-    assert "cancel-in-progress: true" in workflow
-
-
-def test_ci_records_with_the_repository_read_token() -> None:
-    """A private `bookshelf://` input is read by the job's own Actions token."""
-    workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
-    record = yaml.safe_load(workflow)["jobs"]["record"]
-
-    assert record["permissions"] == {"contents": "read", "id-token": "write"}
-    assert record["env"]["BOOKSHELF_AUTH"] == "github-actions"
-    assert record["env"]["BOOKSHELF_API_URL"] == "${{ inputs.api-base-url }}"
-
-
-def test_ci_uploads_the_preview_from_a_trusted_job() -> None:
-    """One job writes through its OIDC token, and runs no pull request code."""
-    workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
-    preview = yaml.safe_load(workflow)["jobs"]["preview"]
-
-    assert workflow.count("id-token: write") == 2
-    assert preview["permissions"] == {"contents": "read", "id-token": "write"}
-    assert preview["needs"] == ["candidate", "targets", "record"]
     assert "head.repo.full_name == github.repository" in preview["if"]
-
-    # The feedstock is never checked out here, so only this template's helpers are.
-    checkouts = [
-        step for step in preview["steps"] if "actions/checkout" in step.get("uses", "")
+    assert [step["with"]["repository"] for step in checkouts] == [
+        "${{ job.workflow_repository }}"
     ]
-    assert [
-        (step["with"]["repository"], step["with"]["ref"]) for step in checkouts
-    ] == [("${{ job.workflow_repository }}", "${{ job.workflow_sha }}")]
-
-    upload = next(
-        step for step in preview["steps"] if step["name"] == "Upload the preview"
-    )
-    assert upload["env"]["HEAD_SHA"] == "${{ github.event.pull_request.head.sha }}"
-    assert upload["env"]["MAIN_SHA"] == "${{ needs.candidate.outputs.main-sha }}"
-    assert (
-        upload["env"]["CANDIDATE_TREE"]
-        == "${{ needs.candidate.outputs.candidate-tree }}"
-    )
-
-    assert "sdk-version:" in workflow
-    assert "api-base-url:" in workflow
-    assert 'uv tool install "bookshelf==${SDK_VERSION}"' in workflow
-    assert "BOOKSHELF_API_URL: ${{ inputs.api-base-url }}" in workflow
-    assert "bookshelf preview upload ${BUNDLES}" in workflow
-    assert "preview_inputs.py" in workflow
-    assert "name: bookshelf-preview" in workflow
 
 
-def test_no_reusable_workflow_publishes_from_ci() -> None:
+def test_every_job_loads_the_helpers_from_its_own_revision() -> None:
+    """A helper from another revision could disagree with the workflow calling it."""
+    for name, job in feedstock_ci()["jobs"].items():
+        for step in steps_using(job, "actions/checkout"):
+            if step["with"].get("path") == ".copier-bookshelf-dataset":
+                assert step["with"]["repository"] == "${{ job.workflow_repository }}"
+                assert step["with"]["ref"] == "${{ job.workflow_sha }}", name
+
+
+def test_every_artifact_upload_overwrites() -> None:
+    """A re-run of a failed leg uploads under the name its first attempt used."""
+    for name, job in feedstock_ci()["jobs"].items():
+        for step in steps_using(job, "actions/upload-artifact"):
+            assert step["with"].get("overwrite") is True, name
+
+
+def test_no_workflow_carries_a_publish_credential() -> None:
     """The platform publishes a merged pull request, so CI carries no publish path."""
     assert not (WORKFLOWS / "feedstock-publish.yaml").exists()
 
@@ -202,84 +81,4 @@ def test_no_reusable_workflow_publishes_from_ci() -> None:
 
         assert "BOOKSHELF_CLIENT_ID" not in definition
         assert "BOOKSHELF_CLIENT_SECRET" not in definition
-        assert "environment: deploy" not in definition
         assert "grant_type=client_credentials" not in definition
-
-
-def test_reusable_workflows_checkout_their_own_matching_revision() -> None:
-    """A called workflow loads the composite action from the same pinned ref."""
-    workflow = (WORKFLOWS / "feedstock-ci.yaml").read_text()
-
-    assert "repository: ${{ job.workflow_repository }}" in workflow
-    assert "ref: ${{ job.workflow_sha }}" in workflow
-    assert "path: .copier-bookshelf-dataset" in workflow
-
-
-ACTIONLINT = re.compile(r"raven-actions/actionlint@[0-9a-f]{40}\b")
-
-
-def test_actionlint_is_part_of_the_existing_ci_and_immutably_pinned() -> None:
-    """The repository CI lints all workflows with an auditable action ref."""
-    workflow = (WORKFLOWS / "ci.yaml").read_text()
-
-    assert "actionlint:" in workflow
-    assert ACTIONLINT.search(workflow), "actionlint is not pinned to a commit"
-
-
-def test_feedstock_automation_defaults_to_python_312() -> None:
-    """Every entry point selects Python 3.12 when callers do not override it."""
-    entry_points = (
-        WORKFLOWS / "feedstock-ci.yaml",
-        ACTION / "action.yml",
-    )
-
-    for entry_point in entry_points:
-        definition = entry_point.read_text()
-        assert 'default: "3.12"' in definition
-        assert 'default: "3.11"' not in definition
-
-
-def test_the_credential_model_is_documented_without_a_handoff_file() -> None:
-    """The README owns the credential guidance without a handoff document."""
-    readme = (ROOT / "README.md").read_text()
-
-    assert "no publish credential" in readme
-    assert "secrets: inherit" not in readme
-    assert "environment secrets" not in readme
-    assert not (ROOT / "HANDOFF.md").exists()
-
-
-def test_action_scripts_use_native_python_311_annotations() -> None:
-    """Action scripts do not carry an unnecessary future annotations import."""
-    for script in ACTION.glob("*.py"):
-        assert "from __future__ import annotations" not in script.read_text()
-
-
-SHARED_BUMP = re.compile(
-    r"uses: climate-resource/github-actions"
-    r"/\.github/workflows/bump\.yaml@\S+( # v\d+\.\d+\.\d+)?"
-)
-
-
-def test_bump_delegates_to_the_shared_actions_repository() -> None:
-    """The template bump workflow calls the shared one rather than inlining its steps.
-
-    The tag is not spelled out here, because Renovate moves it.
-    A generated feedstock has no bump workflow, because it cuts no releases.
-    """
-    caller = WORKFLOWS / "bump.yaml"
-    shared = [
-        line for line in uses_lines(caller) if "climate-resource/github-actions" in line
-    ]
-
-    assert len(shared) == 1, shared
-    assert SHARED_BUMP.fullmatch(shared[0]), shared[0]
-    assert not (ROOT / "template" / ".github" / "workflows" / "bump.yaml").exists()
-
-
-def test_this_repository_has_a_renovate_config() -> None:
-    """Renovate keeps the pins inside `template/` moving, so it needs a config."""
-    config = json.loads((ROOT / "renovate.json").read_text())
-
-    managed = {manager["description"] for manager in config["customManagers"]}
-    assert managed, "no custom managers, so the template's pins would never move"

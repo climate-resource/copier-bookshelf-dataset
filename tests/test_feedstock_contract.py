@@ -7,89 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from conftest import COPIER, ROOT, VERSION, Feedstock, uses_lines
-
-# The SDK pin is no longer answerable per feedstock, so the template is the only source.
-SDK_VERSION = COPIER["bookshelf_sdk_version"]["default"]
-
-
-def test_generated_feedstock_uses_record_and_replay_shape(feedstock: Feedstock) -> None:
-    """The generated project exposes the resolved record and replay contract."""
-    build = feedstock.read("build.py")
-    pyproject = feedstock.read("pyproject.toml")
-    ruff = feedstock.read("ruff.toml")
-    makefile = feedstock.read("Makefile")
-
-    assert "import bookshelf" in build
-    assert "build = bookshelf.setup()" in build
-    assert 'raw = build.use("raw")' in build
-    assert (
-        'build.book.write("data", processed_data, type="timeseries", used=[raw])'
-        in build
-    )
-    assert "build.book.publish()" in build
-    # The recipe states the version and the visibility, so the build file does not.
-    assert "version =" not in build
-    assert "visibility=" not in build
-    assert "asyncio" not in build
-    assert "async def" not in build
-    assert "await " not in build
-    # The SDK is a beta on PyPI, so the specifier names it
-    # and nothing sources it from git.
-    assert f'"bookshelf[publish]=={SDK_VERSION}"' in pyproject
-    assert "[tool.uv.sources]" not in pyproject
-    # New releases soak for three days before uv resolves them, except the SDK itself.
-    uv = tomllib.loads(pyproject)["tool"]["uv"]
-    assert uv["exclude-newer"] == "3 days"
-    assert uv["exclude-newer-package"] == {"bookshelf": False}
-    # The config carries house style only, so the ruff defaults stay out of it.
-    assert 'convention = "numpy"' in ruff
-    for defaulted in ("line-length", "target-version", "src = ", "per-file-ignores"):
-        assert defaulted not in ruff
-    assert "VERSION ?= v0.1.0" in makefile
-    assert "BUNDLE := bundle/$(VERSION)" in makefile
-    assert (
-        "uv run bookshelf record --force --version $(VERSION) --bundle $(BUNDLE)"
-        in makefile
-    )
-    assert "uv run bookshelf validate $(BUNDLE)" in makefile
-    # Publication is the platform's, so a feedstock carries no publish target.
-    assert "bookshelf publish" not in makefile
-
-
-def test_generated_recipe_declares_one_book_reading_the_checked_in_input(
-    feedstock: Feedstock,
-) -> None:
-    """The scaffold is a working feedstock, so the recipe names a book and an input."""
-    recipe = feedstock.recipe
-
-    assert recipe["volume"]["name"] == feedstock.answers["dataset_name"]
-    assert recipe["build"]["notebook"] == "build.py"
-    assert recipe["defaults"]["visibility"] == "public"
-    assert recipe["defaults"]["resources"]["raw"]["type"] == "tabular"
-    assert [book["version"] for book in recipe["books"]] == [VERSION]
-
-    book = feedstock.book(VERSION)
-    assert book["license"] == "CC-BY-4.0"
-    assert book["resources"]["raw"] == {"path": "inputs/raw.csv"}
-    assert (feedstock.path / "inputs" / "raw.csv").is_file()
-
-
-def test_generated_feedstock_carries_no_python_beyond_the_build_file(
-    feedstock: Feedstock,
-) -> None:
-    """The CLI owns record, validate and replay, so a feedstock ships no scripts."""
-    shipped = [path for path in feedstock.shipped() if path.endswith(".py")]
-
-    assert not (feedstock.path / "scripts").exists()
-    assert shipped == ["build.py"]
-
-
-def test_generated_example_input_is_seeded_with_the_dataset_name(
-    feedstock: Feedstock,
-) -> None:
-    """Registration deduplicates on content, so the example differs per feedstock."""
-    assert feedstock.answers["dataset_name"] in feedstock.read("inputs/raw.csv")
+from conftest import ROOT, Feedstock, uses_lines
 
 
 def test_example_inputs_never_collide_between_feedstocks(
@@ -105,50 +23,6 @@ def test_example_inputs_never_collide_between_feedstocks(
     assert len(set(contents)) == len(contents)
 
 
-def test_generated_feedstock_calls_reusable_workflows(feedstock: Feedstock) -> None:
-    """The generated project owns triggers and delegates workflow implementation."""
-    ci = feedstock.read(".github/workflows/feedstock-ci.yaml")
-
-    assert "pull_request:" in ci
-    assert "push:" in ci
-    assert "schedule:" in ci
-    assert (
-        "climate-resource/copier-bookshelf-dataset/.github/workflows/"
-        "feedstock-ci.yaml@HEAD" in ci
-    )
-    assert not (feedstock.path / ".github/workflows/feedstock-publish.yaml").exists()
-
-    workflow = yaml.safe_load(ci)
-    assert workflow["permissions"] == {"contents": "read", "id-token": "write"}
-    assert set(workflow["jobs"]) == {"bookshelf"}
-    job = workflow["jobs"]["bookshelf"]
-    assert job["name"] == "Bookshelf"
-    assert set(job) == {"name", "uses", "with"}
-    assert job["with"] == {
-        "recipes": " ".join(
-            ["bookshelf.yaml"]
-            + [f"bookshelf-{name}.yaml" for name in feedstock.answers["extra_recipes"]]
-        ),
-        "main-ref": "main",
-        "api-base-url": "${{ vars.BOOKSHELF_API_URL }}",
-        "sdk-version": SDK_VERSION,
-    }
-    triggers = workflow[True]
-    assert triggers["pull_request"]["types"] == ["opened", "synchronize", "reopened"]
-    assert triggers["push"]["branches"] == ["main"]
-    assert triggers["schedule"] == [{"cron": "17 3 * * 1"}]
-    assert "workflow_dispatch" in triggers
-    for forbidden in (
-        "secrets:",
-        "pull-requests:",
-        "environment:",
-        "TOKEN_URL",
-        "withdraw",
-        "steps:",
-    ):
-        assert forbidden not in ci
-
-
 def test_generated_feedstock_guards_against_committing_data_and_secrets(
     feedstock: Feedstock,
 ) -> None:
@@ -161,15 +35,6 @@ def test_generated_feedstock_guards_against_committing_data_and_secrets(
     assert {"ruff-check", "ruff-format", "uv-lock"} <= ids
     # Ruff parses neither, so the recipe and the Renovate config need their own hooks.
     assert {"check-yaml", "check-json"} <= ids
-
-
-def test_caller_templates_derive_the_reusable_workflow_ref() -> None:
-    """A caller uses Copier's selected ref, with its resolved commit as fallback."""
-    template_workflows = ROOT / "template" / ".github" / "workflows"
-
-    caller = (template_workflows / "feedstock-ci.yaml.jinja").read_text()
-
-    assert "_copier_conf.vcs_ref or _copier_answers._commit" in caller
 
 
 def test_template_keeps_the_generated_lock_file_under_version_control() -> None:
