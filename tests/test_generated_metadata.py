@@ -93,5 +93,4 @@ def test_no_generated_file_carries_unrendered_template_syntax(
 
 def test_answers_file_records_every_question(feedstock: Feedstock) -> None:
     """An update replays the answers, so all but the re-derived ones are recorded."""
-    # The SDK pin follows the template, so recording it would freeze a feedstock on it.
-    assert set(QUESTIONS) - {"bookshelf_sdk_version"} <= set(feedstock.answers)
+    assert set(QUESTIONS) <= set(feedstock.answers)

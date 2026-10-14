@@ -28,10 +28,6 @@ on:
         required: false
         type: string
         default: ""
-      sdk-version:
-        description: Exact bookshelf version the trusted preview job installs
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -303,11 +299,31 @@ jobs:
         with:
           python-version: ${{ inputs.python-version }}
 
-      - name: Install the pinned SDK
-        env:
-          SDK_VERSION: ${{ inputs.sdk-version }}
+      # The lock comes from the base commit the candidate merged with, never the PR head.
+      - name: Check out the base lockfile
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.candidate.outputs.main-sha }}
+          path: base
+          sparse-checkout: uv.lock
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Install the SDK locked on main
         run: |
           set -euo pipefail
+          SDK_VERSION="$(python3 - <<'PY'
+          import re
+          import tomllib
+
+          with open("base/uv.lock", "rb") as handle:
+              packages = tomllib.load(handle)["package"]
+          versions = [p["version"] for p in packages if p["name"] == "bookshelf"]
+          if len(versions) != 1 or not re.fullmatch(r"\d+(\.\d+)*((a|b|rc)\d+)?", versions[0]):
+              raise SystemExit(f"expected one bookshelf version in uv.lock on main, found {versions}")
+          print(versions[0])
+          PY
+          )"
           uv tool install "bookshelf==${SDK_VERSION}"
           echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
 

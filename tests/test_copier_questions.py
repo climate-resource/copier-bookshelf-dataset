@@ -5,7 +5,6 @@ rejected, and render nothing when it is accepted. These tests render them the sa
 Copier does, so a loosened pattern shows up here rather than in a generated feedstock.
 """
 
-import re
 import shutil
 import subprocess
 import warnings
@@ -97,7 +96,6 @@ def test_every_question_has_a_type_and_help() -> None:
         "dataset_name_human",
         "dataset_description",
         "project_url",
-        "bookshelf_sdk_version",
         "extra_recipes",
     }
 
@@ -107,15 +105,15 @@ def test_every_question_has_a_type_and_help() -> None:
         assert "placeholder" in question or "default" in question, name
 
 
-def test_the_sdk_pin_is_the_only_question_never_prompted() -> None:
-    """The rest stay prompted, because Copier re-derives what it does not record."""
+def test_every_question_is_prompted() -> None:
+    """Copier re-derives what it does not record, so nothing is hidden."""
     prompted = {
         name
         for name, question in QUESTIONS.items()
         if question.get("when", True) is not False
     }
 
-    assert prompted == set(QUESTIONS) - {"bookshelf_sdk_version"}
+    assert prompted == set(QUESTIONS)
     assert {name for name in prompted if "default" not in QUESTIONS[name]} == set(
         PROMPTED_WITHOUT_A_DEFAULT
     )
@@ -159,14 +157,12 @@ def test_a_question_that_is_never_asked_still_takes_a_data_override(
         "dataset_name=example",
         "--data",
         "dataset_description=An override has to reach the render.",
-        "--data",
-        "bookshelf_sdk_version=9.9.9",
         str(source),
         str(destination),
     )
 
     assert result.returncode == 0, f"{result.stdout}\n{result.stderr}"
-    assert "==9.9.9" in (destination / "pyproject.toml").read_text()
+    assert "bookshelf[publish]>=1.0,<2" in (destination / "pyproject.toml").read_text()
 
 
 @pytest.mark.slow
@@ -222,8 +218,6 @@ def test_an_update_keeps_the_answers_that_decide_which_files_exist(
         "https://github.com/climate-resource/renamed-feedstock"
     )
     assert (feedstock / "bookshelf-second-volume.yaml").exists()
-    # The pin is the one answer that must follow the template rather than the feedstock.
-    assert "bookshelf_sdk_version" not in answers
 
 
 def test_a_recorded_answer_survives_for_the_questions_that_choose_files() -> None:
@@ -234,12 +228,6 @@ def test_a_recorded_answer_survives_for_the_questions_that_choose_files() -> Non
 
     assert multi_volume.answers["extra_recipes"] == ["second-volume"]
     assert multi_volume.answers["project_url"].startswith("https://github.com/")
-
-
-def test_no_feedstock_records_the_sdk_pin() -> None:
-    """The template moves the pin, so a recorded answer would freeze a feedstock."""
-    for generated in FEEDSTOCKS:
-        assert "bookshelf_sdk_version" not in generated.answers, generated.name
 
 
 @pytest.mark.parametrize(
@@ -325,10 +313,7 @@ def test_the_template_declares_no_copier_tasks() -> None:
 
 
 def test_preview_question_defaults() -> None:
-    """The SDK default is one exact version and extra volumes are opt-in."""
-    assert re.fullmatch(
-        r"\d+\.\d+\.\d+((a|b|rc)\d+)?", COPIER["bookshelf_sdk_version"]["default"]
-    )
+    """Extra volumes are opt-in."""
     assert COPIER["extra_recipes"]["default"] == []
 
 

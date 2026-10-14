@@ -113,14 +113,10 @@ def renovate_reaches(config: dict[str, Any], manager: str, dep: str) -> bool:
     return enabled
 
 
-def test_generated_renovate_config_leaves_the_copier_owned_pins_alone(
+def test_generated_renovate_config_leaves_the_copier_owned_pin_alone(
     feedstock: Feedstock,
 ) -> None:
-    """`copier update` owns both pins, so a Renovate bump would split them apart.
-
-    The reusable workflow ref and the SDK pin move together, and the CI caller
-    installs the SDK the build resolves, so a one sided bump breaks the upload.
-    """
+    """`copier update` owns the reusable workflow ref, so Renovate leaves it."""
     config = json.loads(feedstock.read("renovate.json"))
 
     assert config["$schema"] == "https://docs.renovatebot.com/renovate-schema.json"
@@ -128,7 +124,7 @@ def test_generated_renovate_config_leaves_the_copier_owned_pins_alone(
     assert not renovate_reaches(
         config, "github-actions", "climate-resource/copier-bookshelf-dataset"
     )
-    assert not renovate_reaches(config, "pep621", "bookshelf")
+    assert renovate_reaches(config, "pep621", "bookshelf")
 
     disabled = {
         (manager, dep)
@@ -139,7 +135,6 @@ def test_generated_renovate_config_leaves_the_copier_owned_pins_alone(
     }
     assert disabled == {
         ("github-actions", "climate-resource/copier-bookshelf-dataset"),
-        ("pep621", "bookshelf"),
     }
     # A rule naming a dependency no manager extracts matches nothing and so protects
     # nothing, so every disabled name has to be one the feedstock really declares.
