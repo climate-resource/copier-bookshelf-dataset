@@ -3,6 +3,9 @@
   "extends": [
     "local>climate-resource/.github//renovate/base"
   ],
+  "gitIgnoredAuthors": [
+    "41898282+github-actions[bot]@users.noreply.github.com"
+  ],
   "packageRules": [
     {
       "description": "The rendered fixtures are ctt output, so Renovate never edits them directly",
