@@ -44,6 +44,7 @@ jobs:
       conflict: ${{ steps.candidate.outputs.conflict }}
       main-sha: ${{ steps.candidate.outputs.main-sha }}
       candidate-tree: ${{ steps.candidate.outputs.candidate-tree }}
+      sdk-version: ${{ steps.sdk.outputs.version }}
     steps:
       - name: Check out feedstock
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -65,6 +66,22 @@ jobs:
         env:
           MAIN_REF: ${{ inputs.main-ref }}
         run: bash .copier-bookshelf-dataset/actions/record-bundle/candidate.sh
+
+      - name: Read the SDK version the candidate locks
+        id: sdk
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "${GITHUB_OUTPUT}"
+          import re
+          import tomllib
+
+          with open("uv.lock", "rb") as handle:
+              packages = tomllib.load(handle)["package"]
+          versions = [p["version"] for p in packages if p["name"] == "bookshelf"]
+          if len(versions) != 1 or not re.fullmatch(r"\d+(\.\d+)*((a|b|rc)\d+)?", versions[0]):
+              raise SystemExit(f"expected one bookshelf version in uv.lock, found {versions}")
+          print(f"version={versions[0]}")
+          PY
 
       - name: Write the candidate identity
         env:
@@ -299,31 +316,11 @@ jobs:
         with:
           python-version: ${{ inputs.python-version }}
 
-      # The lock comes from the base commit the candidate merged with, never the PR head.
-      - name: Check out the base lockfile
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ needs.candidate.outputs.main-sha }}
-          path: base
-          sparse-checkout: uv.lock
-          sparse-checkout-cone-mode: false
-          persist-credentials: false
-
-      - name: Install the SDK locked on main
+      - name: Install the SDK the candidate locks
+        env:
+          SDK_VERSION: ${{ needs.candidate.outputs.sdk-version }}
         run: |
           set -euo pipefail
-          SDK_VERSION="$(python3 - <<'PY'
-          import re
-          import tomllib
-
-          with open("base/uv.lock", "rb") as handle:
-              packages = tomllib.load(handle)["package"]
-          versions = [p["version"] for p in packages if p["name"] == "bookshelf"]
-          if len(versions) != 1 or not re.fullmatch(r"\d+(\.\d+)*((a|b|rc)\d+)?", versions[0]):
-              raise SystemExit(f"expected one bookshelf version in uv.lock on main, found {versions}")
-          print(versions[0])
-          PY
-          )"
           uv tool install "bookshelf==${SDK_VERSION}"
           echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
 

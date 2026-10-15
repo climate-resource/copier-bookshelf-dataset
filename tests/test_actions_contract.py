@@ -46,19 +46,14 @@ def test_only_the_record_and_preview_jobs_can_mint_an_oidc_token() -> None:
 
 
 def test_the_preview_job_runs_no_pull_request_code() -> None:
-    """The upload job checks out only this template and the base lockfile."""
+    """The upload job checks out only this template."""
     preview = feedstock_ci()["jobs"]["preview"]
     checkouts = steps_using(preview, "actions/checkout")
 
     assert "head.repo.full_name == github.repository" in preview["if"]
     assert [step["with"].get("repository") for step in checkouts] == [
         "${{ job.workflow_repository }}",
-        None,
     ]
-    lockfile = checkouts[1]["with"]
-    assert lockfile["ref"] == "${{ needs.candidate.outputs.main-sha }}"
-    assert lockfile["sparse-checkout"] == "uv.lock"
-    assert "head.sha" not in lockfile["ref"]
 
 
 def test_every_job_loads_the_helpers_from_its_own_revision() -> None:
