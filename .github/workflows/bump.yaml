@@ -31,6 +31,6 @@ jobs:
       contents: write
     with:
       bump-rule: ${{ inputs.bump_rule }}
-      python-version: "3.12"
+      python-version: "3.14"
       create-release: true
       release-draft: false

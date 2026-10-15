@@ -1,16 +1,27 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:best-practices",
-    ":semanticCommits"
+    "local>climate-resource/.github//renovate/base"
   ],
-  "pre-commit": {
-    "enabled": true
-  },
   "copier": {
     "enabled": true
   },
   "packageRules": [
+    {
+      "description": "Template releases need a manual review, so they get their own pull request as soon as they ship",
+      "matchManagers": [
+        "copier"
+      ],
+      "groupName": "bookshelf template",
+      "schedule": [
+        "at any time"
+      ],
+      "minimumReleaseAge": "0 days",
+      "addLabels": [
+        "template-update"
+      ],
+      "automerge": false
+    },
     {
       "description": "The reusable feedstock workflows are pinned to the Copier ref, so `copier update` moves them, not Renovate",
       "matchManagers": [
