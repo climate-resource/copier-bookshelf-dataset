@@ -21,6 +21,26 @@ from the examples given in that link.
 
 <!-- towncrier release notes start -->
 
+## copier-bookshelf-dataset v0.7.0 (2026-10-15)
+
+### Breaking Changes
+
+- Removed the `sdk-version` input of the reusable feedstock CI workflow and the `bookshelf_sdk_version` answer.
+  A feedstock must run `copier update` and then `uv lock`, so `uv.lock` resolves `bookshelf` within `>=1.0,<2`.
+  The preview job fails if `uv.lock` has no `bookshelf` entry. ([#75](https://github.com/climate-resource/copier-bookshelf-dataset/pull/75))
+
+### Improvements
+
+- Generated feedstocks now pin `bookshelf[publish]==1.1.2`,
+  so `bookshelf preview upload` sends the recipe's `volume:` facts and each merged preview updates the volume. ([#69](https://github.com/climate-resource/copier-bookshelf-dataset/pull/69))
+- Generated feedstocks now depend on `bookshelf[publish]>=1.0,<2` and Renovate bumps `uv.lock` again.
+  The preview job uploads with the `bookshelf` version the candidate locks, so an SDK bump is previewed on its own pull request. ([#75](https://github.com/climate-resource/copier-bookshelf-dataset/pull/75))
+
+### Trivial/Internal Changes
+
+- [#70](https://github.com/climate-resource/copier-bookshelf-dataset/pull/70), [#71](https://github.com/climate-resource/copier-bookshelf-dataset/pull/71), [#76](https://github.com/climate-resource/copier-bookshelf-dataset/pull/76)
+
+
 ## copier-bookshelf-dataset v0.6.0 (2026-10-05)
 
 ### Features
