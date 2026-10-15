@@ -7,7 +7,7 @@ on:
         description: Python version used to run the feedstock
         required: false
         type: string
-        default: "3.12"
+        default: "3.14"
       version:
         description: Single version to record. Records every version the recipes declare when left empty.
         required: false
