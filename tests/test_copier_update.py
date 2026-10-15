@@ -126,7 +126,7 @@ def test_an_update_conflict_writes_a_rej_file_that_the_hook_rejects(
     assert (scaffold.feedstock / "ruff.toml.rej").exists()
     git(("add", "-A"), scaffold.feedstock)
     hook = subprocess.run(
-        ("pre-commit", "run", "forbidden-files", "--all-files"),
+        ("uvx", "pre-commit", "run", "forbidden-files", "--all-files"),
         cwd=scaffold.feedstock,
         env=ENV,
         capture_output=True,
@@ -185,18 +185,22 @@ def test_an_update_across_two_versions_applies_both(scaffold: Scaffold) -> None:
     assert scaffold.answers()["_commit"] == "v3.0.0"
 
 
-def test_an_update_keeps_the_sdk_range_and_every_other_answer(
+def test_an_update_moves_the_sdk_range_and_keeps_every_other_answer(
     scaffold: Scaffold,
 ) -> None:
     before = scaffold.answers()
-    scaffold.release(append_to("ruff.toml", "# new in v2\n"))
+    pyproject = scaffold.feedstock / "pyproject.toml"
+    assert "bookshelf[publish]>=1.0,<2" in pyproject.read_text()
+
+    def widen(source: Path) -> None:
+        path = source / "template" / "pyproject.toml.jinja"
+        path.write_text(path.read_text().replace(">=1.0,<2", ">=1.1,<2"))
+
+    scaffold.release(widen)
 
     assert_updated(scaffold.update())
 
-    assert (
-        "bookshelf[publish]>=1.0,<2"
-        in (scaffold.feedstock / "pyproject.toml").read_text()
-    )
+    assert "bookshelf[publish]>=1.1,<2" in pyproject.read_text()
     after = scaffold.answers()
     assert {k: v for k, v in after.items() if k != "_commit"} == {
         k: v for k, v in before.items() if k != "_commit"
