@@ -46,13 +46,13 @@ def test_only_the_record_and_preview_jobs_can_mint_an_oidc_token() -> None:
 
 
 def test_the_preview_job_runs_no_pull_request_code() -> None:
-    """The preview job writes to the platform, so it checks out only this template."""
+    """The upload job checks out only this template."""
     preview = feedstock_ci()["jobs"]["preview"]
     checkouts = steps_using(preview, "actions/checkout")
 
     assert "head.repo.full_name == github.repository" in preview["if"]
-    assert [step["with"]["repository"] for step in checkouts] == [
-        "${{ job.workflow_repository }}"
+    assert [step["with"].get("repository") for step in checkouts] == [
+        "${{ job.workflow_repository }}",
     ]
 
 
