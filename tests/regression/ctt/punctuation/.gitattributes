@@ -1,0 +1,2 @@
+# Snapshots keep their upstream line endings, so their recorded digests still match.
+inputs/** -text
