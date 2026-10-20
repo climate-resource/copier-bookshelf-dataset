@@ -1,5 +1,8 @@
 # See https://pre-commit.com/hooks.html for more hooks.
 
+# Snapshots keep their upstream bytes, so their recorded digests still match.
+exclude: ^inputs/
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: "v6.0.0"

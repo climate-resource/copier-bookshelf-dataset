@@ -150,3 +150,13 @@ def test_generated_renovate_config_leaves_the_copier_owned_pin_alone(
     # The other managers stay reachable, or the feedstock stops getting updates.
     assert renovate_reaches(config, "pep621", "pandas")
     assert renovate_reaches(config, "github-actions", "actions/checkout")
+
+
+def test_generated_feedstock_keeps_snapshot_bytes_as_downloaded(
+    feedstock: Feedstock,
+) -> None:
+    """Hooks and line-ending conversion would rewrite raw inputs and break digests."""
+    hooks = yaml.safe_load(feedstock.read(".pre-commit-config.yaml"))
+
+    assert hooks["exclude"] == "^inputs/"
+    assert "inputs/** -text" in feedstock.read(".gitattributes").splitlines()
