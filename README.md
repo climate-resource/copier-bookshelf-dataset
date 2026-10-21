@@ -35,7 +35,12 @@ Generating the repository only needs `uv`.
 
 4. Install the Bookshelf GitHub App on the repository and set up the [repository rules](#repository-rules).
 
-5. Create each volume once with `bookshelf volume create`.
+5. Create each volume once, named as in the recipe's `volume:`:
+
+   ```bash
+   uv run bookshelf volume create $volume_name --licence CC-BY-4.0
+   ```
+
    `bookshelf publish` will not create one, so a missing volume fails with `Series 'NAME' not found`.
 
 ### What the template scaffolds
@@ -55,6 +60,18 @@ The SDK's [examples README](https://github.com/climate-resource/bookshelf/blob/m
 lists the example feedstocks and explains how to use them.
 The [recipe format](https://github.com/climate-resource/bookshelf/blob/main/docs/explanation/recipe-format.md)
 documents every field a recipe can carry.
+
+## Working on a feedstock
+
+Install the virtual environment, then build one version of the dataset:
+
+```bash
+make virtual-environment
+make run VERSION=v0.1.0
+```
+
+`VERSION` picks one entry from `books:` in the recipe.
+The result lands in `bundle/v0.1.0` and is validated, but not uploaded.
 
 ## Publishing data
 
@@ -100,8 +117,9 @@ A feedstock repository must:
 
 A GitHub ruleset should also require the platform's check to pass before merging,
 and require the pull request branch to be up to date.
-The check is expected to be named `Bookshelf / validate publication`,
-but confirm this against the first pull request the App reports on.
+The platform's check is named `Bookshelf / validate publication`.
+Without the up-to-date rule, merging two pull requests in a row fails the second publish
+with `stale-baseline`, because its preview was built before the first one published.
 
 ## Updating a feedstock
 
