@@ -32,9 +32,9 @@ checks:  ## run all the linting checks of the codebase
 ruff-fixes:  ## fix the code using ruff
     # format before and after checking so that the formatted stuff is checked and
     # the fixed stuff is formatted
-	uvx ruff@0.17.1 format
-	uvx ruff@0.17.1 check --fix
-	uvx ruff@0.17.1 format
+	uvx ruff@0.17.3 format
+	uvx ruff@0.17.3 check --fix
+	uvx ruff@0.17.3 format
 
 #.PHONY: test
 #test:  ## run the tests
