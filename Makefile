@@ -29,9 +29,9 @@ checks:  ## run all the linting checks of the codebase
 ruff-fixes:  ## fix the code using ruff
     # format before and after checking so that the formatted stuff is checked and
     # the fixed stuff is formatted
-	uvx ruff@0.17.4 format
-	uvx ruff@0.17.4 check --fix
-	uvx ruff@0.17.4 format
+	uvx ruff@0.17.5 format
+	uvx ruff@0.17.5 check --fix
+	uvx ruff@0.17.5 format
 
 .PHONY: ctt
 ctt:  ## run ctt (copier-template-tester) to generate output from running this template with the config defined in `ctt.toml`
